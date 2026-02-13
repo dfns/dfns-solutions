@@ -2,31 +2,13 @@
 
 Process cross-border payments with FX conversion between stablecoins using [Dfns](https://www.dfns.co) wallets.
 
-This recipe demonstrates:
+International payments require burning a source currency, applying an exchange rate, and minting the destination currency to the receiver — coordinating multiple actors (bank, sender, FX provider) across each step. This recipe shows how to orchestrate that flow on-chain with Dfns wallets handling the key management and transaction signing.
 
-- **Cross-border payments** — multi-step payment flow with FX conversion between two stablecoins
-- **Multi-actor workflow** — Bank, Sender, FX Provider, and Receiver each have dedicated CLIs
-- **Dfns wallet integration** — all on-chain transactions are signed and broadcast through Dfns managed wallets
+> **Full tutorial:** [docs.dfns.co/solutions/cross-border-payments](https://docs.dfns.co/solutions/cross-border-payments)
 
-## Prerequisites
+## Quick start
 
-- Node.js v18+
-- A [Dfns](https://www.dfns.co) account with API access
-- Three Dfns wallets (Bank, Sender, Receiver), each funded with testnet ETH (Sepolia by default)
-
-## How It Works
-
-A cross-border payment flows through three stages:
-
-1. **Sender initiates** — the sender creates a payment specifying the receiver and iEUR amount
-2. **FX Provider sets rate** — the bank/FX provider sets the conversion rate (iEUR → iAUD)
-3. **Sender executes** — the sender confirms the rate and executes; iEUR is burned, iAUD is minted to the receiver
-
-The system uses two stablecoins: **iEUR** (source currency) and **iAUD** (destination currency), managed by a `CrossBorderPayment` contract that handles the FX lifecycle.
-
-## Quick Start
-
-### 1. Configure Environment
+### 1. Configure environment
 
 ```bash
 cp .env.example .env
@@ -96,36 +78,11 @@ npm run sender-cli execute <CBP_ADDRESS> 0
 
 > **Note:** All stablecoins use **6 decimals**. The CLIs accept human-readable amounts (e.g. `100` = 100 tokens).
 
-## CLI Reference
+## CLI reference
 
-### Sender CLI (`npm run sender-cli`)
-
-| Action | Usage |
+| CLI | Usage |
 |---|---|
-| `init` | `init <cbpAddress> <iEurAddress> <receiverAddress> <amount>` — Approve iEUR and initiate payment |
-| `execute` | `execute <cbpAddress> <paymentId>` — Execute a payment after FX rate is set |
-| `approve` | `approve <tokenAddress> <spenderAddress> <amount>` — Approve token spending |
-
-### FX Provider CLI (`npm run fx-cli`)
-
-| Action | Usage |
-|---|---|
-| `set-rate` | `set-rate <cbpAddress> <paymentId> <amount>` — Set the iAUD conversion amount for a payment |
-
-### Receiver CLI (`npm run receiver-cli`)
-
-| Action | Usage |
-|---|---|
-| `grantRole` | `grantRole <roleName> <contractAddress> <accountAddress>` — Grant a role on a StableCoin contract |
-
-## Documentation
-
-See the full tutorial at [docs.dfns.co/solutions/cross-border-payments](https://docs.dfns.co/solutions/cross-border-payments).
-
-## Project Structure
-
-```
-contracts/          Solidity smart contracts (StableCoin + CrossBorderPayment)
-dfns/               Dfns integration scripts and CLIs
-test/               Hardhat tests
-```
+| `npm run sender-cli init` | `init <cbpAddress> <iEurAddress> <receiverAddress> <amount>` — Initiate a payment |
+| `npm run sender-cli execute` | `execute <cbpAddress> <paymentId>` — Execute a payment after FX rate is set |
+| `npm run fx-cli set-rate` | `set-rate <cbpAddress> <paymentId> <amount>` — Set the iAUD conversion amount |
+| `npm run receiver-cli grantRole` | `grantRole <roleName> <contractAddress> <accountAddress>` — Grant a role on a contract |
