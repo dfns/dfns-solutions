@@ -1,28 +1,18 @@
 # Dfns Stablecoin Management
 
-Deploy and manage ERC-20 stablecoins using [Dfns](https://www.dfns.co) wallets.
+Deploy and manage an ERC-20 stablecoin with mint, burn, and pause controls using [Dfns](https://www.dfns.co) wallets.
 
-This recipe demonstrates:
+Stablecoin issuers need to deploy a token contract, mint and burn supply, and freeze transfers in emergencies — all while keeping signing keys secure. This recipe shows how to do that with Dfns wallets handling the key management and transaction signing.
 
-- **Stablecoin issuance** — deploy an ERC-20 stablecoin with mint, burn, and pause controls
-- **Interactive management** — CLI for minting, burning, pausing, and unpausing
-- **Dfns wallet integration** — all on-chain transactions are signed and broadcast through Dfns managed wallets
+> **Full tutorial:** [docs.dfns.co/solutions/stablecoin-management](https://docs.dfns.co/solutions/stablecoin-management)
 
-## Prerequisites
+## Quick start
 
-- Node.js v18+
-- A [Dfns](https://www.dfns.co) account with API access
-- A Dfns wallet funded with testnet ETH (Sepolia by default)
-
-## Quick Start
-
-### 1. Configure Environment
+### 1. Configure environment
 
 ```bash
 cp .env.example .env
 ```
-
-Fill in your `.env`:
 
 | Variable | Description |
 |---|---|
@@ -34,45 +24,25 @@ Fill in your `.env`:
 | `BANK_WALLET_ID` | Dfns wallet ID that will own and operate the stablecoin |
 | `BLOCKCHAIN_RPC_URL` | RPC endpoint (default: Sepolia public RPC) |
 
-### 2. Install and Compile
+### 2. Install and compile
 
 ```bash
 npm install
 npx hardhat compile
 ```
 
-### 3. Deploy a Stablecoin
+### 3. Deploy
 
 ```bash
 npm run deploy
 ```
 
-This deploys an ERC-20 stablecoin ("Bank AUD" / `bAUD`) owned by the `BANK_WALLET_ID` wallet. The deploy script prints the contract address — save it for the next step.
+Deploys an ERC-20 stablecoin ("Bank AUD" / `bAUD`) owned by the `BANK_WALLET_ID` wallet. The script prints the contract address.
 
-### 4. Manage the Stablecoin
+### 4. Manage
 
 ```bash
 npm run ops <contractAddress>
 ```
 
-This opens an interactive CLI with the following operations:
-
-| Operation | Description |
-|---|---|
-| **Pause** | Halt all token transfers |
-| **Unpause** | Resume token transfers |
-| **Mint** | Mint tokens to an address |
-| **Burn** | Burn tokens from the bank wallet |
-
-> **Note:** The stablecoin uses **6 decimals** (like USDC/USDT). To mint 100 tokens, enter `100000000` as the amount.
-
-## Documentation
-
-See the full tutorial at [docs.dfns.co/solutions/stablecoin-management](https://docs.dfns.co/solutions/stablecoin-management).
-
-## Project Structure
-
-```
-contracts/          Solidity smart contracts
-dfns/               Dfns integration scripts and CLIs
-```
+Interactive CLI for minting, burning, pausing, and unpausing the stablecoin. The token uses 6 decimals — to mint 100 tokens, enter `100000000`.
