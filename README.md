@@ -8,6 +8,7 @@ Dfns provides institutional-grade key management and wallet infrastructure. Reci
 - **Code you can run today** — clone, configure your Dfns credentials, and have a working app in minutes
 - **Clear architecture** — every recipe explains where each piece lives so you can lift what you need into your own application
 
+## Recipes
 
 
 ## Getting Started
@@ -18,7 +19,7 @@ You'll need a Dfns account and API credentials. If you don't have one yet, sign 
 
 ## Documentation
 
-Full tutorials available at [docs.dfns.co](https://docs.dfns.co/solutions).
+Full tutorials available at [docs.dfns.co/solutions](https://docs.dfns.co/solutions).
 
 ## Contributing
 
