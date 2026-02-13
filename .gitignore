@@ -1,0 +1,12 @@
+node_modules/
+dist/
+artifacts/
+cache/
+types/
+coverage/
+.env
+.DS_Store
+.claude
+
+# Docs are maintained separately
+docs/
