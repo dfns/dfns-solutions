@@ -10,6 +10,13 @@ Dfns provides institutional-grade key management and wallet infrastructure. Reci
 
 ## Recipes
 
+### Stablecoin Issuance & Management
+
+Deploy and manage your own ERC-20 stablecoin on Ethereum (Sepolia testnet) using Dfns wallets. Mint, burn, pause, and unpause tokens through an interactive CLI.
+
+**Business use case:** Financial institutions and fintechs that need to issue and control a branded stablecoin with enterprise-grade key security.
+
+[Get started &rarr;](./stablecoin-management/)
 
 ## Getting Started
 

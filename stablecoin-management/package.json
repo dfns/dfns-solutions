@@ -1,0 +1,23 @@
+{
+  "name": "dfns-stablecoin-management",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "deploy": "npx -y tsx dfns/DeployStableCoin.ts",
+    "ops": "npx -y tsx dfns/StableCoinOps.ts"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.2",
+    "@nomicfoundation/hardhat-viem": "^3.0.2",
+    "@types/node": "^22.19.10",
+    "hardhat": "^3.1.7",
+    "typescript": "^5.9.3",
+    "viem": "^2.45.2"
+  },
+  "dependencies": {
+    "@dfns/sdk": "^0.8.10",
+    "@dfns/sdk-keysigner": "^0.8.10",
+    "@openzeppelin/contracts": "^5.4.0",
+    "dotenv": "^17.2.4"
+  }
+}
