@@ -18,6 +18,14 @@ Deploy and manage your own ERC-20 stablecoin on Ethereum (Sepolia testnet) using
 
 [Get started &rarr;](./stablecoin-management/)
 
+### Cross-Border Payments with FX Settlement
+
+Process cross-border payments between two stablecoins (e.g. iEUR &rarr; iAUD) using an on-chain settlement contract and FX provider workflow.
+
+**Business use case:** Payment processors and banks looking to settle international transfers on-chain with transparent FX conversion and full audit trail.
+
+[Get started &rarr;](./cross-border-payments/)
+
 ## Getting Started
 
 Pick a recipe, open its folder, and follow the README — each one walks you through setup and running the app end to end.

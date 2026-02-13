@@ -1,0 +1,28 @@
+{
+  "name": "dfns-cross-border-payments",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "deploy": "npx -y tsx dfns/DeployCrossBorderPayment.ts",
+    "sender-cli": "npx -y tsx dfns/SenderCLI.ts",
+    "receiver-cli": "npx -y tsx dfns/ReceiverCLI.ts",
+    "fx-cli": "npx -y tsx dfns/FXProviderCLI.ts"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.2",
+    "@nomicfoundation/hardhat-viem": "^3.0.2",
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.19.10",
+    "chai": "^6.2.2",
+    "hardhat": "^3.1.7",
+    "typescript": "^5.9.3",
+    "viem": "^2.45.2"
+  },
+  "dependencies": {
+    "@dfns/sdk": "^0.8.10",
+    "@dfns/sdk-keysigner": "^0.8.10",
+    "@openzeppelin/contracts": "^5.4.0",
+    "dotenv": "^17.2.4"
+  }
+}
