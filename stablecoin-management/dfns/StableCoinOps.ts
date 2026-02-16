@@ -87,6 +87,11 @@ async function main() {
                 break
             case '4':
                 const burnAmount = await askQuestion('Enter amount to burn: ')
+                const confirmBurn = await askQuestion(`⚠️  WARNING: You are about to burn ${burnAmount} tokens from wallet ${BANK_WALLET_ID}. Type 'yes' to confirm: `)
+                if (confirmBurn.toLowerCase() !== 'yes') {
+                    console.log('Burn operation cancelled.')
+                    break
+                }
                 await broadcast('burn', [BigInt(burnAmount)])
                 break
             case '5':
