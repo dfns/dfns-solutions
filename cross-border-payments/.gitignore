@@ -1,0 +1,23 @@
+# Node modules
+/node_modules
+
+# Compilation output
+/dist
+
+# Hardhat Build Artifacts
+/artifacts
+
+# Hardhat compilation support directory
+/cache
+
+# Typechain output
+/types
+
+# Hardhat coverage reports
+/coverage
+
+# Environment variables
+.env
+
+# OS files
+.DS_Store
