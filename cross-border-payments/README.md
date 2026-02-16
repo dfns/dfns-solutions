@@ -2,7 +2,7 @@
 
 Process cross-border payments with FX conversion between stablecoins using [Dfns](https://www.dfns.co) wallets.
 
-International payments require burning a source currency, applying an exchange rate, and minting the destination currency to the receiver — coordinating multiple actors (bank, sender, FX provider) across each step. This recipe shows how to orchestrate that flow on-chain with Dfns wallets handling the key management and transaction signing.
+International payments require burning a source currency, applying an exchange rate, and minting the destination currency to the receiver — coordinating multiple actors (bank, sender, FX provider) across each step. This solution blueprint shows how to orchestrate that flow on-chain with Dfns wallets handling the key management and transaction signing.
 
 > **Full tutorial:** [docs.dfns.co/solutions/cross-border-payments](https://docs.dfns.co/solutions/cross-border-payments)
 

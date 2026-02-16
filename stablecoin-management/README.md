@@ -2,7 +2,7 @@
 
 Deploy and manage an ERC-20 stablecoin with mint, burn, and pause controls using [Dfns](https://www.dfns.co) wallets.
 
-Stablecoin issuers need to deploy a token contract, mint and burn supply, and freeze transfers in emergencies — all while keeping signing keys secure. This recipe shows how to do that with Dfns wallets handling the key management and transaction signing.
+Stablecoin issuers need to deploy a token contract, mint and burn supply, and freeze transfers in emergencies — all while keeping signing keys secure. This solution blueprint shows how to do that with Dfns wallets handling the key management and transaction signing.
 
 > **Full tutorial:** [docs.dfns.co/solutions/stablecoin-management](https://docs.dfns.co/solutions/stablecoin-management)
 
