@@ -1,8 +1,14 @@
 import { encodeFunctionData, keccak256, stringToBytes } from 'viem'
 import fs from 'fs'
 import path from 'path'
+import readline from 'readline'
 import { fileURLToPath } from 'url'
 import { dfnsApi, BANK_WALLET_ID, publicClient } from './DfnsCommon.js'
+
+function askQuestion(question: string): Promise<string> {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+    return new Promise((resolve) => rl.question(question, (answer) => { rl.close(); resolve(answer) }))
+}
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -54,6 +60,12 @@ async function main() {
         console.log(`Role: ${roleName}`)
         console.log(`Contract: ${contractAddress}`)
         console.log(`Account: ${accountAddress}`)
+
+        const confirmGrant = await askQuestion(`⚠️  WARNING: You are about to grant role '${roleName}' to ${accountAddress}. Type 'yes' to confirm: `)
+        if (confirmGrant.toLowerCase() !== 'yes') {
+            console.log('Grant role operation cancelled.')
+            process.exit(0)
+        }
 
         const roleHash = keccak256(stringToBytes(roleName))
         console.log(`Role Hash: ${roleHash}`)

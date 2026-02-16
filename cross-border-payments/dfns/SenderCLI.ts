@@ -1,8 +1,14 @@
 import { encodeFunctionData, parseUnits, decodeEventLog } from 'viem'
 import fs from 'fs'
 import path from 'path'
+import readline from 'readline'
 import { fileURLToPath } from 'url'
 import { dfnsApi, SENDER_WALLET_ID, publicClient } from './DfnsCommon.js'
+
+function askQuestion(question: string): Promise<string> {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+    return new Promise((resolve) => rl.question(question, (answer) => { rl.close(); resolve(answer) }))
+}
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -88,6 +94,12 @@ async function main() {
         console.log(`Receiver: ${receiverAddress}`)
         console.log(`Amount: ${amountStr} (${amount})`)
 
+        const confirmInit = await askQuestion(`⚠️  WARNING: You are initiating a cross-border payment of ${amountStr} tokens from wallet ${SENDER_WALLET_ID}. Type 'yes' to confirm: `)
+        if (confirmInit.toLowerCase() !== 'yes') {
+            console.log('Payment initiation cancelled.')
+            process.exit(0)
+        }
+
         // 1. Approve
         console.log("Step 1: Approving iEUR...")
         const approveData = encodeFunctionData({
@@ -134,6 +146,12 @@ async function main() {
         }
 
         console.log(`Executing Payment ${paymentId}...`)
+
+        const confirmExecute = await askQuestion(`⚠️  WARNING: You are about to execute payment ${paymentId} from wallet ${SENDER_WALLET_ID}. This is irreversible. Type 'yes' to confirm: `)
+        if (confirmExecute.toLowerCase() !== 'yes') {
+            console.log('Payment execution cancelled.')
+            process.exit(0)
+        }
 
         const executeData = encodeFunctionData({
             abi: crossBorderArtifact.abi,
