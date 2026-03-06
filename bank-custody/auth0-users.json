@@ -1,0 +1,26 @@
+[
+  {
+    "email": "alice@example.com",
+    "email_verified": true,
+    "name": "Alice Martin",
+    "password_hash": "$2b$10$9SPxGThjQe8sRsNFKyJyve6zcqq2axzti5x/foh.fWD7QPVTrvVMa"
+  },
+  {
+    "email": "bob@example.com",
+    "email_verified": true,
+    "name": "Bob Martin",
+    "password_hash": "$2b$10$9SPxGThjQe8sRsNFKyJyve6zcqq2axzti5x/foh.fWD7QPVTrvVMa"
+  },
+  {
+    "email": "charlie@example.com",
+    "email_verified": true,
+    "name": "Charlie Martin",
+    "password_hash": "$2b$10$9SPxGThjQe8sRsNFKyJyve6zcqq2axzti5x/foh.fWD7QPVTrvVMa"
+  },
+  {
+    "email": "compliance@securebank.example.com",
+    "email_verified": true,
+    "name": "Claire Dupont",
+    "password_hash": "$2b$10$9SPxGThjQe8sRsNFKyJyve6zcqq2axzti5x/foh.fWD7QPVTrvVMa"
+  }
+]

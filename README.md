@@ -42,6 +42,14 @@ Tokenized corporate bond lifecycle on Ethereum — investors subscribe with stab
 
 [Get started &rarr;](./bond-issuance/)
 
+### Bank Custody Platform
+
+Full-stack web application where crypto wallets sit alongside traditional fiat accounts — same look, same feel. Dfns powers the crypto side invisibly; customers never know it exists. Includes family delegation (parents share wallet access with kids, with per-person transfer limits) and a bank employee approval workflow.
+
+**Business use case:** Banks and neobanks looking to offer crypto custody to retail customers with institutional-grade key security, configurable approval policies, and family account sharing.
+
+[Get started &rarr;](./bank-custody/)
+
 ## Getting Started
 
 Pick a solution blueprint, open its folder, and follow the README — each one walks you through setup and running the app end to end.

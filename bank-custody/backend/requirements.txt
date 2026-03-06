@@ -1,0 +1,5 @@
+flask==3.1.0
+flask-cors==5.0.1
+python-dotenv==1.1.0
+python-jose[cryptography]==3.4.0
+dfns-sdk
