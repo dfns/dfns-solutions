@@ -35,7 +35,7 @@ async function waitForTx(walletId: string, txId: string): Promise<string> {
 async function broadcast(walletId: string, to: string | undefined, data: string) {
     const result = await dfnsApi.wallets.broadcastTransaction({
         walletId,
-        body: { kind: 'Eip1559', to, data } as any,
+        body: { kind: 'Evm', to, data } as any,
     })
     let txHash = result.txHash
     if (!txHash) {

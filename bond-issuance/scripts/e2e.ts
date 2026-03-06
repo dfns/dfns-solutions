@@ -28,7 +28,7 @@ async function broadcast(walletId: string, to: string | undefined, data: string,
     console.log(`  Broadcasting: ${label}...`)
     const result = await dfnsApi.wallets.broadcastTransaction({
         walletId,
-        body: { kind: 'Eip1559', to, data } as any,
+        body: { kind: 'Evm', to, data } as any,
     })
     let txHash = result.txHash
     if (!txHash) {

@@ -43,7 +43,7 @@ async function broadcast(functionName: string, args: any[] = []) {
 
     const result = await dfnsApi.wallets.broadcastTransaction({
         walletId: ISSUER_WALLET_ID,
-        body: { kind: 'Eip1559', to: currencyAddress, data } as any,
+        body: { kind: 'Evm', to: currencyAddress, data } as any,
     })
 
     console.log('Tx hash:', result.txHash)

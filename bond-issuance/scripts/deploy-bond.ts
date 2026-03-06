@@ -56,7 +56,7 @@ async function main() {
         console.log('Broadcasting deployment...')
         const result = await dfnsApi.wallets.broadcastTransaction({
             walletId: ISSUER_WALLET_ID,
-            body: { kind: 'Eip1559', to: undefined, data: deployData } as any,
+            body: { kind: 'Evm', to: undefined, data: deployData } as any,
         })
 
         console.log('Tx hash:', result.txHash)
