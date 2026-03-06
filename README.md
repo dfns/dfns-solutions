@@ -34,6 +34,14 @@ Atomic stablecoin swap on Solana — burn tEUR from the sender and mint tSGD to 
 
 [Get started &rarr;](./cross-border-payments-solana/)
 
+### Bond Issuance
+
+Tokenized corporate bond lifecycle on Ethereum — investors subscribe with stablecoins, receive ERC-20 bond tokens, collect periodic coupon payments, and redeem principal at maturity. Includes a web UI with split Issuer/Investor dashboards.
+
+**Business use case:** Asset managers and capital markets teams looking to issue, manage, and settle tokenized bonds on-chain with institutional key custody.
+
+[Get started &rarr;](./bond-issuance/)
+
 ## Getting Started
 
 Pick a solution blueprint, open its folder, and follow the README — each one walks you through setup and running the app end to end.

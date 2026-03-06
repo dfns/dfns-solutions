@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "lib": ["es2023"],
+    "module": "esnext",
+    "target": "es2022",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "outDir": "dist"
+  },
+  "include": [
+    "./hardhat.config.ts",
+    "./scripts/**/*.ts",
+    "./test/**/*.ts",
+    "./contracts/**/*.sol"
+  ]
+}

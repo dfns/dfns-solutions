@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bond Issuance — Dfns</title>
+<style>
+  :root { --red: #f87171; --yellow: #facc15; --text: #f1f5f9; --muted: #94a3b8; --dim: #475569; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: var(--text); min-height: 100vh; }
+
+  header { padding: 16px 24px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header .tag { font-size: 11px; color: #fff; padding: 2px 8px; border-radius: 9999px; }
+
+  .layout { display: grid; grid-template-columns: 1fr 1fr; min-height: calc(100vh - 90px); }
+
+  /* ── Issuer theme (blue) ── */
+  .panel-issuer { background: #0c1929; padding: 24px; overflow-y: auto; border-right: 2px solid #1e3a5f; }
+  .panel-issuer .card { background: #122241; border: 1px solid #1e3a5f; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .panel-issuer .stat { background: #0c1929; border-radius: 6px; padding: 10px; }
+  .panel-issuer .step.next { background: rgba(96, 165, 250, 0.12); border-radius: 8px; margin-left: -8px; margin-right: -8px; padding: 8px; }
+  .panel-issuer .step.next .step-num { box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.4); }
+  .panel-issuer input { background: #0c1929; border: 1px solid #1e3a5f; border-radius: 6px; padding: 6px 10px; color: var(--text); font-size: 13px; width: 140px; }
+  .panel-issuer input:focus { outline: none; border-color: #60a5fa; }
+  .panel-issuer button { background: #3b82f6; color: #fff; }
+  .panel-issuer button:hover { background: #60a5fa; }
+  .panel-issuer .log { background: #0c1929; border: 1px solid #1e3a5f; }
+  .panel-issuer .panel-title { color: #60a5fa; }
+  .panel-issuer .dot { background: #3b82f6; }
+
+  /* ── Investor theme (green) ── */
+  .panel-investor { background: #0a1f1a; padding: 24px; overflow-y: auto; }
+  .panel-investor .card { background: #0f2e24; border: 1px solid #1a4a3a; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .panel-investor .stat { background: #0a1f1a; border-radius: 6px; padding: 10px; }
+  .panel-investor .step.next { background: rgba(74, 222, 128, 0.1); border-radius: 8px; margin-left: -8px; margin-right: -8px; padding: 8px; }
+  .panel-investor .step.next .step-num { box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.4); }
+  .panel-investor input { background: #0a1f1a; border: 1px solid #1a4a3a; border-radius: 6px; padding: 6px 10px; color: var(--text); font-size: 13px; width: 140px; }
+  .panel-investor input:focus { outline: none; border-color: #4ade80; }
+  .panel-investor button { background: #16a34a; color: #fff; }
+  .panel-investor button:hover { background: #22c55e; }
+  .panel-investor .log { background: #0a1f1a; border: 1px solid #1a4a3a; }
+  .panel-investor .panel-title { color: #4ade80; }
+  .panel-investor .dot { background: #22c55e; }
+
+  /* ── Shared ── */
+  .panel-title { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .panel-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .card h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+
+  .step { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+  .step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--dim); color: var(--muted); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+  .step-num.done { background: #22c55e; color: #fff; }
+  .step-num.active { background: #3b82f6; color: #fff; }
+  .step-num.error { background: var(--red); color: #fff; }
+  .step-body { flex: 1; }
+  .step-label { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .step-detail { font-size: 12px; color: var(--muted); }
+  .step-detail a { color: #60a5fa; text-decoration: none; }
+  .row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+
+  button { border: none; border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  button:disabled { background: var(--dim) !important; color: var(--muted); cursor: not-allowed; }
+
+  .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .stat-value { font-size: 16px; font-weight: 600; margin-top: 2px; }
+
+  .log { border-radius: 6px; padding: 10px; max-height: 200px; overflow-y: auto; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px; line-height: 1.6; color: var(--muted); margin-top: 12px; }
+  .log .info { color: var(--text); }
+  .log .ok { color: #4ade80; }
+  .log .err { color: var(--red); }
+  .log .tx { color: #60a5fa; }
+
+  .addr { font-family: 'SF Mono', monospace; font-size: 12px; color: var(--muted); }
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--dim); border-top-color: #60a5fa; border-radius: 50%; animation: spin 0.6s linear infinite; margin-left: 6px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .wallet-label { font-family: 'SF Mono', monospace; font-size: 11px; color: var(--muted); margin-bottom: 16px; padding: 8px 12px; border-radius: 6px; word-break: break-all; }
+  .panel-issuer .wallet-label { background: #122241; border: 1px solid #1e3a5f; }
+  .panel-investor .wallet-label { background: #0f2e24; border: 1px solid #1a4a3a; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Bond Issuance</h1>
+  <span class="tag" style="background:#3b82f6;">Dfns</span>
+  <span class="tag" style="background:var(--dim)">Sepolia</span>
+</header>
+
+<div class="layout">
+  <!-- ════════════ ISSUER PANEL ════════════ -->
+  <div class="panel-issuer">
+    <div class="panel-title"><span class="dot"></span> Issuer</div>
+    <div class="wallet-label" id="issuerWallet">Loading wallet...</div>
+
+    <div class="card">
+      <h3>Issuer Dashboard</h3>
+      <div class="status-grid">
+        <div class="stat"><div class="stat-label">Issuance</div><div class="stat-value" id="st-status">—</div></div>
+        <div class="stat"><div class="stat-label">Total Subscribed</div><div class="stat-value" id="st-subscribed">—</div></div>
+        <div class="stat"><div class="stat-label">EURC Balance</div><div class="stat-value" id="st-issuer-eurc">—</div></div>
+        <div class="stat"><div class="stat-label">Next Coupon Due</div><div class="stat-value" id="st-next-coupon">—</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Setup</h3>
+      <div class="step" id="s-deploy-stable">
+        <div class="step-num" id="sn-deploy-stable">1</div>
+        <div class="step-body">
+          <div class="step-label">Deploy StableCoin</div>
+          <div class="step-detail" id="sd-deploy-stable">Deploy an ERC-20 stablecoin (EURC) used as the settlement currency for the bond</div>
+          <div class="row"><button onclick="deployStablecoin()">Deploy</button></div>
+        </div>
+      </div>
+      <div class="step" id="s-mint">
+        <div class="step-num" id="sn-mint">2</div>
+        <div class="step-body">
+          <div class="step-label">Mint EURC</div>
+          <div class="step-detail" id="sd-mint">Mint stablecoins to both wallets — the investor needs funds to subscribe, and the issuer needs funds to pay coupons later</div>
+          <div class="row">
+            <input id="mintAmount" placeholder="Amount" value="10000">
+            <button onclick="mintBoth()">Mint</button>
+          </div>
+        </div>
+      </div>
+      <div class="step" id="s-deploy-bond">
+        <div class="step-num" id="sn-deploy-bond">3</div>
+        <div class="step-body">
+          <div class="step-label">Deploy Bond</div>
+          <div class="step-detail" id="sd-deploy-bond">Deploy the bond contract with face value, interest rate, coupon schedule, and maturity. APR is in basis points (400 = 4%)</div>
+          <div class="row" style="flex-wrap:wrap; gap:10px;">
+            <label style="font-size:11px; color:var(--muted);">Notional (EURC)<br><input id="bondNotional" value="100" style="width:80px; margin-top:3px;"></label>
+            <label style="font-size:11px; color:var(--muted);">APR (bps)<br><input id="bondApr" value="400" style="width:70px; margin-top:3px;"></label>
+            <label style="font-size:11px; color:var(--muted);">Coupon freq (s)<br><input id="bondFreq" value="300" style="width:85px; margin-top:3px;"></label>
+            <label style="font-size:11px; color:var(--muted);">Duration (s)<br><input id="bondDuration" value="3600" style="width:85px; margin-top:3px;"></label>
+            <button onclick="deployBond()" style="align-self:flex-end;">Deploy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Lifecycle</h3>
+      <div class="step">
+        <div class="step-num" id="sn-close">5</div>
+        <div class="step-body">
+          <div class="step-label">Close Issuance</div>
+          <div class="step-detail" id="sd-close">Lock the subscription book and start the interest accrual clock. No more investors can subscribe after this</div>
+          <div class="row"><button onclick="closeIssuance()">Close</button></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num" id="sn-withdraw">6</div>
+        <div class="step-body">
+          <div class="step-label">Withdraw Proceeds</div>
+          <div class="step-detail" id="sd-withdraw">Transfer the EURC raised from subscriptions to the issuer's wallet</div>
+          <div class="row"><button onclick="withdrawProceeds()">Withdraw</button></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num" id="sn-coupon">8</div>
+        <div class="step-body">
+          <div class="step-label">Deposit Coupon</div>
+          <div class="step-detail" id="sd-coupon">Fund the next coupon period by depositing the required interest payment into the bond contract</div>
+          <div class="row"><button onclick="depositCoupon()">Deposit</button></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num" id="sn-principal">10</div>
+        <div class="step-body">
+          <div class="step-label">Return Principal</div>
+          <div class="step-detail" id="sd-principal">Deposit EURC back into the bond contract so investors can redeem their bonds at maturity</div>
+          <div class="row">
+            <input id="principalAmount" placeholder="Amount" value="1000">
+            <button onclick="returnPrincipal()">Return</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="log" id="issuerLog"></div>
+  </div>
+
+  <!-- ════════════ INVESTOR PANEL ════════════ -->
+  <div class="panel-investor">
+    <div class="panel-title"><span class="dot"></span> Investor</div>
+    <div class="wallet-label" id="investorWallet">Loading wallet...</div>
+
+    <div class="card">
+      <h3>Investor Portfolio</h3>
+      <div class="status-grid">
+        <div class="stat"><div class="stat-label">Bond Tokens</div><div class="stat-value" id="st-bonds">—</div></div>
+        <div class="stat"><div class="stat-label">Accrued Interest</div><div class="stat-value" id="st-accrued">—</div></div>
+        <div class="stat"><div class="stat-label">EURC Balance</div><div class="stat-value" id="st-investor-eurc">—</div></div>
+        <div class="stat"><div class="stat-label">Maturity</div><div class="stat-value" id="st-maturity">—</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Actions</h3>
+      <div class="step">
+        <div class="step-num" id="sn-subscribe">4</div>
+        <div class="step-body">
+          <div class="step-label">Subscribe</div>
+          <div class="step-detail" id="sd-subscribe">Approve the bond contract to spend EURC, then deposit into the subscription escrow. The amount must be a multiple of the bond's face value</div>
+          <div class="row">
+            <input id="subAmount" placeholder="Amount" value="1000">
+            <button onclick="subscribe()">Subscribe</button>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num" id="sn-claim-bond">7</div>
+        <div class="step-body">
+          <div class="step-label">Claim Bond Tokens</div>
+          <div class="step-detail" id="sd-claim-bond">Mint ERC-20 bond tokens proportional to the subscription amount. Can only be done after issuance is closed</div>
+          <div class="row"><button onclick="claimBond()">Claim</button></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num" id="sn-claim-coupon">9</div>
+        <div class="step-body">
+          <div class="step-label">Claim Coupon <span id="couponLabel" style="font-weight:400; color:var(--muted); font-size:12px;"></span></div>
+          <div class="step-detail" id="sd-claim-coupon">Collect your pro-rata share of the coupon interest payment. The coupon must be funded and its date must have passed</div>
+          <div class="row">
+            <button onclick="claimCoupon()">Claim</button>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num" id="sn-redeem">11</div>
+        <div class="step-body">
+          <div class="step-label">Redeem</div>
+          <div class="step-detail" id="sd-redeem">Burn your bond tokens and receive the face value in EURC. Only available after maturity and once the issuer has returned the principal</div>
+          <div class="row"><button onclick="redeem()">Redeem</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="log" id="investorLog"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let statusInterval;
+let nextCouponIndex = 1;
+
+const stepOrder = ['deploy-stable','mint','deploy-bond','subscribe','close','withdraw','claim-bond','coupon','claim-coupon','principal','redeem'];
+
+function highlightNextStep() {
+  stepOrder.forEach(id => {
+    const el = $('sn-' + id)?.closest('.step');
+    if (el) el.classList.remove('next');
+  });
+  for (const id of stepOrder) {
+    const num = $('sn-' + id);
+    if (num && !num.classList.contains('done')) {
+      const el = num.closest('.step');
+      if (el) el.classList.add('next');
+      break;
+    }
+  }
+}
+
+function log(panel, msg, cls = 'info') {
+  const el = $(panel + 'Log');
+  const ts = new Date().toLocaleTimeString();
+  el.innerHTML += `<div class="${cls}">[${ts}] ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function markStep(id, state, detail) {
+  const num = $('sn-' + id);
+  num.className = 'step-num' + (state ? ' ' + state : '');
+  if (detail) $('sd-' + id).innerHTML = detail;
+  if (state === 'done') highlightNextStep();
+}
+
+function txLink(hash) {
+  return `<a href="https://sepolia.etherscan.io/tx/${hash}" target="_blank">${hash.slice(0, 10)}...</a>`;
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch('/api' + path, opts);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Request failed');
+  return json;
+}
+
+// ── Init ──
+
+async function init() {
+  try {
+    const w = await api('GET', '/wallets');
+    $('issuerWallet').innerHTML = `${w.issuer.address} <span style="font-style:italic; opacity:0.6;">· configured in .env</span>`;
+    $('investorWallet').innerHTML = `${w.investor.address} <span style="font-style:italic; opacity:0.6;">· configured in .env</span>`;
+  } catch (e) {
+    $('issuerWallet').innerHTML = `<span style="color:var(--red)">Failed to load: ${e.message}</span>`;
+    $('investorWallet').innerHTML = `<span style="color:var(--red)">Failed to load: ${e.message}</span>`;
+  }
+}
+
+async function refreshStatus() {
+  try {
+    const s = await api('GET', '/status');
+    if (!s.deployed) return;
+    $('st-status').textContent = s.isDefaulted ? 'DEFAULTED' : s.issuanceClosed ? 'Closed' : 'Open';
+    $('st-status').style.color = s.isDefaulted ? 'var(--red)' : s.issuanceClosed ? '#4ade80' : 'var(--yellow)';
+    $('st-subscribed').textContent = s.totalSubscribed + ' EURC';
+    $('st-bonds').textContent = s.investorBondBalance;
+    $('st-accrued').textContent = s.accruedInterest + ' EURC';
+    $('st-investor-eurc').textContent = s.investorStableBalance;
+    $('st-issuer-eurc').textContent = s.issuerStableBalance;
+    $('st-next-coupon').textContent = s.timeToNextCoupon > 0 ? s.timeToNextCoupon + 's' : 'Now';
+    if (s.nextCoupon) {
+      nextCouponIndex = s.nextCoupon;
+      $('couponLabel').textContent = `(#${nextCouponIndex})`;
+    }
+    if (s.maturityDate > 0) {
+      const remaining = s.maturityDate - s.now;
+      $('st-maturity').textContent = remaining > 0 ? Math.floor(remaining / 60) + 'm ' + (remaining % 60) + 's' : 'Mature';
+      $('st-maturity').style.color = remaining <= 0 ? '#4ade80' : 'var(--text)';
+    }
+  } catch {}
+}
+
+// ── Actions ──
+
+async function deployStablecoin() {
+  markStep('deploy-stable', 'active', 'Deploying...<span class="spinner"></span>');
+  log('issuer', 'Deploying StableCoin...');
+  try {
+    const r = await api('POST', '/deploy/stablecoin', { name: 'Euro Coin', symbol: 'EURC' });
+    markStep('deploy-stable', 'done', `Deployed: <span class="addr">${r.address}</span>`);
+    log('issuer', `StableCoin deployed at ${r.address}`, 'ok');
+    log('issuer', `Tx: ${txLink(r.txHash)}`, 'tx');
+  } catch (e) {
+    markStep('deploy-stable', 'error', e.message);
+    log('issuer', e.message, 'err');
+  }
+}
+
+async function mintBoth() {
+  const amount = $('mintAmount').value;
+  markStep('mint', 'active', 'Minting...<span class="spinner"></span>');
+  log('issuer', `Minting ${amount} EURC to investor...`);
+  try {
+    const w = await api('GET', '/wallets');
+    await api('POST', '/mint', { to: w.investor.address, amount });
+    log('issuer', `Minted ${amount} EURC to investor`, 'ok');
+    log('issuer', `Minting ${amount} EURC to issuer...`);
+    await api('POST', '/mint', { to: w.issuer.address, amount });
+    log('issuer', `Minted ${amount} EURC to issuer`, 'ok');
+    markStep('mint', 'done', `Minted ${amount} EURC to both wallets`);
+    refreshStatus();
+  } catch (e) {
+    markStep('mint', 'error', e.message);
+    log('issuer', e.message, 'err');
+  }
+}
+
+async function deployBond() {
+  markStep('deploy-bond', 'active', 'Deploying...<span class="spinner"></span>');
+  log('issuer', 'Deploying Bond...');
+  try {
+    const r = await api('POST', '/deploy/bond', {
+      notional: $('bondNotional').value,
+      apr: $('bondApr').value,
+      frequency: $('bondFreq').value,
+      duration: $('bondDuration').value,
+    });
+    markStep('deploy-bond', 'done', `Deployed: <span class="addr">${r.address}</span>`);
+    log('issuer', `Bond deployed at ${r.address}`, 'ok');
+    log('issuer', `Tx: ${txLink(r.txHash)}`, 'tx');
+    statusInterval = setInterval(refreshStatus, 5000);
+    refreshStatus();
+  } catch (e) {
+    markStep('deploy-bond', 'error', e.message);
+    log('issuer', e.message, 'err');
+  }
+}
+
+async function subscribe() {
+  const amount = $('subAmount').value;
+  markStep('subscribe', 'active', 'Subscribing...<span class="spinner"></span>');
+  log('investor', `Subscribing ${amount} EURC...`);
+  try {
+    const r = await api('POST', '/investor/subscribe', { amount });
+    markStep('subscribe', 'done', `Subscribed ${amount} EURC`);
+    log('investor', `Subscribed successfully`, 'ok');
+    log('investor', `Tx: ${txLink(r.txHash)}`, 'tx');
+    refreshStatus();
+  } catch (e) {
+    markStep('subscribe', 'error', e.message);
+    log('investor', e.message, 'err');
+  }
+}
+
+async function closeIssuance() {
+  markStep('close', 'active', 'Closing...<span class="spinner"></span>');
+  log('issuer', 'Closing issuance...');
+  try {
+    const r = await api('POST', '/issuer/close');
+    markStep('close', 'done', 'Issuance closed');
+    log('issuer', 'Issuance closed', 'ok');
+    log('issuer', `Tx: ${txLink(r.txHash)}`, 'tx');
+    refreshStatus();
+  } catch (e) {
+    markStep('close', 'error', e.message);
+    log('issuer', e.message, 'err');
+  }
+}
+
+async function withdrawProceeds() {
+  markStep('withdraw', 'active', 'Withdrawing...<span class="spinner"></span>');
+  log('issuer', 'Withdrawing proceeds...');
+  try {
+    const r = await api('POST', '/issuer/withdraw');
+    markStep('withdraw', 'done', 'Proceeds withdrawn');
+    log('issuer', 'Proceeds withdrawn', 'ok');
+    log('issuer', `Tx: ${txLink(r.txHash)}`, 'tx');
+    refreshStatus();
+  } catch (e) {
+    markStep('withdraw', 'error', e.message);
+    log('issuer', e.message, 'err');
+  }
+}
+
+async function claimBond() {
+  markStep('claim-bond', 'active', 'Claiming...<span class="spinner"></span>');
+  log('investor', 'Claiming bond tokens...');
+  try {
+    const r = await api('POST', '/investor/claim-bond');
+    markStep('claim-bond', 'done', 'Bond tokens claimed');
+    log('investor', 'Bond tokens claimed', 'ok');
+    log('investor', `Tx: ${txLink(r.txHash)}`, 'tx');
+    refreshStatus();
+  } catch (e) {
+    markStep('claim-bond', 'error', e.message);
+    log('investor', e.message, 'err');
+  }
+}
+
+async function depositCoupon() {
+  markStep('coupon', 'active', 'Depositing...<span class="spinner"></span>');
+  log('issuer', 'Depositing coupon...');
+  try {
+    const r = await api('POST', '/issuer/deposit-coupon');
+    markStep('coupon', 'done', `Coupon funded (${r.couponAmount} EURC)`);
+    log('issuer', `Coupon deposited: ${r.couponAmount} EURC`, 'ok');
+    log('issuer', `Tx: ${txLink(r.txHash)}`, 'tx');
+    refreshStatus();
+  } catch (e) {
+    markStep('coupon', 'error', e.message);
+    log('issuer', e.message, 'err');
+  }
+}
+
+async function claimCoupon() {
+  const idx = nextCouponIndex;
+  markStep('claim-coupon', 'active', `Claiming #${idx}...<span class="spinner"></span>`);
+  log('investor', `Claiming coupon #${idx}...`);
+  try {
+    const r = await api('POST', '/investor/claim-coupon', { couponIndex: idx });
+    markStep('claim-coupon', 'done', `Coupon #${idx} claimed`);
+    log('investor', `Coupon #${idx} claimed`, 'ok');
+    log('investor', `Tx: ${txLink(r.txHash)}`, 'tx');
+    refreshStatus();
+  } catch (e) {
+    markStep('claim-coupon', 'error', e.message);
+    log('investor', e.message, 'err');
+  }
+}
+
+async function returnPrincipal() {
+  const amount = $('principalAmount').value;
+  markStep('principal', 'active', 'Returning...<span class="spinner"></span>');
+  log('issuer', `Returning ${amount} EURC principal...`);
+  try {
+    const r = await api('POST', '/issuer/return-principal', { amount });
+    markStep('principal', 'done', `Principal returned (${amount} EURC)`);
+    log('issuer', `Principal returned`, 'ok');
+    log('issuer', `Tx: ${txLink(r.txHash)}`, 'tx');
+    refreshStatus();
+  } catch (e) {
+    markStep('principal', 'error', e.message);
+    log('issuer', e.message, 'err');
+  }
+}
+
+async function redeem() {
+  markStep('redeem', 'active', 'Redeeming...<span class="spinner"></span>');
+  log('investor', 'Redeeming bonds...');
+  try {
+    const r = await api('POST', '/investor/redeem');
+    markStep('redeem', 'done', 'Bonds redeemed');
+    log('investor', 'Bonds redeemed — principal returned', 'ok');
+    log('investor', `Tx: ${txLink(r.txHash)}`, 'tx');
+    refreshStatus();
+  } catch (e) {
+    markStep('redeem', 'error', e.message);
+    log('investor', e.message, 'err');
+  }
+}
+
+init();
+highlightNextStep();
+</script>
+</body>
+</html>
