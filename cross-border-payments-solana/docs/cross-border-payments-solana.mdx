@@ -1,0 +1,347 @@
+---
+title: "Cross-Border Payments on Solana"
+description: "Build an atomic stablecoin swap for cross-border payments on Solana with Dfns wallets"
+---
+
+## Overview
+
+This guide walks through building a cross-border payment system on Solana where stablecoins are atomically swapped between currencies -- burning the source token and minting the target token in a single transaction.
+
+All signing is handled by Dfns wallets. Private keys never leave the Dfns KMS infrastructure, even as the system deploys programs, creates token mints, and executes payments on-chain.
+
+<Card title="Source code" icon="github" href="https://github.com/dfns/dfns-solutions/tree/cross-border-payments-solana/cross-border-payments-solana">
+  dfns/dfns-solutions -- cross-border-payments-solana
+</Card>
+
+## Scenario
+
+A fintech company operates a remittance corridor between Europe and Southeast Asia. A customer in Paris wants to send EUR to a recipient in Singapore.
+
+The flow:
+
+1. The **bank** initiates a payment on-chain, locking in the sender, receiver, and EUR amount.
+2. An **FX provider** quotes the EUR/SGD rate and records the SGD output amount on the payment.
+3. The bank **executes** the swap -- the Solana program atomically burns tEUR from the sender and mints tSGD to the receiver. If either operation fails, nothing happens.
+
+The on-chain program enforces that minted tokens can **only** go to the receiver specified during initialization. This prevents any redirection after the payment is created.
+
+## Architecture
+
+### Payment flow
+
+The system implements a three-step state machine stored in a Program Derived Address (PDA):
+
+```
+PendingFX  -->  FXRateSet  -->  Completed
+```
+
+Each payment creates a unique PDA seeded by `["payment", sender, payment_id]`. This ensures every payment has its own on-chain record and prevents collisions.
+
+```
+Bank (Dfns Wallet)                Solana Program              Receiver
+       |                              |                         |
+       |-- initialize_payment ------->|                         |
+       |                              |  Creates PDA            |
+       |                              |  status: PendingFX      |
+       |                              |                         |
+FX Provider (Dfns Wallet)             |                         |
+       |-- set_fx_rate -------------->|                         |
+       |                              |  Locks output amount    |
+       |                              |  status: FXRateSet      |
+       |                              |                         |
+Bank   |-- execute_payment ---------->|                         |
+       |                              |-- burn(source, sender)  |
+       |                              |-- mint(target, receiver)|
+       |                              |  status: Completed      |
+```
+
+### On-chain program
+
+The Anchor program (`programs/cross-border-payment/src/lib.rs`) exposes three instructions:
+
+| Instruction | What it does | Who calls it |
+|---|---|---|
+| `initialize_payment` | Creates a Payment PDA with sender, receiver, and input amount | Bank |
+| `set_fx_rate` | Records the converted output amount on the PDA | FX Provider |
+| `execute_payment` | Burns source tokens from sender, mints target tokens to receiver | Bank |
+
+The `execute_payment` instruction is atomic: the burn and mint happen in the same transaction. The program validates that:
+- The payment is in `FXRateSet` status
+- The caller is the original sender
+- The receiver token account is owned by the receiver recorded at initialization
+
+### Dfns integration
+
+Every transaction is constructed client-side as an unsigned Solana transaction, then broadcast through the Dfns API:
+
+```typescript
+const serialized = transaction
+  .serialize({ requireAllSignatures: false })
+  .toString('hex')
+
+await dfnsApi.wallets.broadcastTransaction({
+  walletId: BANK_WALLET_ID,
+  body: { kind: 'Transaction', transaction: serialized },
+})
+```
+
+Dfns signs the transaction inside the KMS and broadcasts it to the Solana network. The application never handles private keys.
+
+### Stablecoins
+
+The system uses standard SPL tokens with 6 decimals as stablecoins. Each token is deployed with Metaplex metadata (name, symbol) so it displays correctly in explorers and wallets. The bank's Dfns wallet is the mint authority for both tokens.
+
+## Prerequisites
+
+- **Node.js** v18+
+- **Rust** and **Cargo**
+- **Solana CLI** and **Anchor** (v0.32+) -- the included `setup.sh` script can install these
+- A **Dfns** account with:
+  - Organization ID
+  - Service account auth token
+  - Credential ID and private key
+
+## Step 1: Setup
+
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/dfns/dfns-solutions.git
+cd dfns-solutions/cross-border-payments-solana
+
+# Install Solana CLI, Anchor, and Node dependencies
+./setup.sh
+
+# Or if you already have the toolchain:
+npm install
+```
+
+## Step 2: Create wallets
+
+Create two **Solana Devnet** wallets in the [Dfns dashboard](https://app.dfns.io):
+
+1. **Bank wallet** -- acts as the sender, mint authority, and program deployer
+2. **Receiver wallet** -- the payment recipient
+
+Fund the bank wallet with devnet SOL for transaction fees:
+
+```bash
+solana airdrop 2 <BANK_WALLET_ADDRESS> --url devnet
+```
+
+## Step 3: Configure environment
+
+Create the environment file:
+
+```bash
+cp .env.example dfns/.env
+```
+
+Fill in `dfns/.env` with your Dfns credentials and the bank wallet ID:
+
+```env
+DFNS_API_URL=https://api.dfns.io
+DFNS_ORG_ID=or-...
+DFNS_AUTH_TOKEN=eyJ...
+DFNS_CRED_ID=Y2...
+DFNS_PRIVATE_KEY=-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----
+
+BANK_WALLET_ID=wa-...
+```
+
+`SOURCE_MINT`, `TARGET_MINT`, and `PROGRAM_ID` will be filled in after deploying.
+
+## Step 4: Build and test
+
+Build the Anchor program and run the test suite against a local validator:
+
+```bash
+anchor build
+anchor keys sync
+anchor test
+```
+
+You should see all 4 tests pass:
+
+```
+cross-border-payment
+  ✔ Initializes a payment
+  ✔ Sets FX rate
+  ✔ Executes the payment (burn & mint)
+  ✔ Fails if re-initializing same payment
+
+4 passing
+```
+
+The tests run on a local Solana validator -- no Dfns credentials or devnet access required.
+
+## Step 5: Deploy stablecoins
+
+Deploy two SPL token mints that represent the source and target currencies. The bank's Dfns wallet becomes the mint authority.
+
+```bash
+npm run deploy:stablecoin -- "Test EUR" tEUR
+npm run deploy:stablecoin -- "Test SGD" tSGD
+```
+
+Each command prints the mint address and the correct env var name (`SOURCE_MINT` or `TARGET_MINT`). Copy both into your `dfns/.env`:
+
+```env
+SOURCE_MINT=H4WRim...
+TARGET_MINT=8iRgQc...
+```
+
+## Step 6: Deploy the program
+
+Upload the compiled Anchor program to Solana Devnet. The Dfns wallet is used both as the payer and as the upgrade authority.
+
+```bash
+anchor build
+npm run deploy:program
+```
+
+The script:
+1. Reads the compiled `.so` binary
+2. Creates a buffer account on-chain
+3. Uploads the program in 800-byte chunks (batched for speed)
+4. Deploys or upgrades the program
+
+The upgrade authority stays in the Dfns KMS, meaning future upgrades also go through Dfns.
+
+## Step 7: Fund the sender
+
+Mint source tokens to the bank wallet so it has funds to send:
+
+```bash
+npm run mint-tokens -- <SOURCE_MINT> <BANK_WALLET_ADDRESS> 1000000000
+```
+
+This mints 1,000 tokens (amounts use 6 decimals: `1000000000` = 1,000.000000 tokens).
+
+## Step 8: Run a payment
+
+### Initialize
+
+Create a payment record on-chain. This stores the sender, receiver, and input amount in a PDA.
+
+```bash
+npm run init-payment -- 1 <RECEIVER_ADDRESS> 500000
+```
+
+- `1` -- payment ID (unique per sender)
+- `500000` -- amount in base units (0.5 tokens)
+
+### Set FX rate
+
+An authorized entity locks in the conversion rate. For example, converting 0.5 tEUR at a rate of 1.6x gives 0.8 tSGD:
+
+```bash
+npm run set-fx-rate -- 1 <SENDER_ADDRESS> 800000
+```
+
+- `800000` -- the exact output amount in target token base units
+
+### Execute
+
+Trigger the atomic swap. The program burns the source tokens from the sender and mints the target tokens to the receiver:
+
+```bash
+npm run execute-payment -- 1
+```
+
+The script automatically creates the receiver's token account if it doesn't exist yet.
+
+### Verify
+
+Check the results on Solana Explorer:
+
+- **Sender**: should show reduced tEUR balance
+- **Receiver**: should show new tSGD balance
+
+## Step 9: Interactive UI
+
+The blueprint includes a web UI for running the full payment flow visually:
+
+```bash
+npm run ui
+```
+
+Open [http://localhost:3000](http://localhost:3000). The UI provides:
+
+- A **three-step form** to initialize a payment, set the FX rate, and execute the swap
+- A **flow visualization** showing the current payment status (PendingFX → FXRateSet → Completed)
+- **Live balances** for sender and receiver (source tokens, target tokens, SOL)
+- **Solana Explorer links** for every transaction
+
+The UI calls the same functions as the CLI scripts -- it's a thin Express server (`dfns/server.ts`) serving a single HTML file (`dfns/ui.html`) with API endpoints that delegate to the shared payment logic.
+
+## How it works
+
+### Payment PDA
+
+Each payment is stored as a PDA with seeds `["payment", sender_pubkey, payment_id_le_bytes]`. The account layout:
+
+| Field | Type | Size | Description |
+|---|---|---|---|
+| `id` | `u64` | 8 | Unique payment identifier |
+| `sender` | `Pubkey` | 32 | Sender wallet address |
+| `receiver` | `Pubkey` | 32 | Receiver wallet address |
+| `amount_in` | `u64` | 8 | Source token amount to burn |
+| `amount_out` | `u64` | 8 | Target token amount to mint |
+| `status` | `enum` | 1 | PendingFX / FXRateSet / Completed |
+| `bump` | `u8` | 1 | PDA bump seed |
+
+### Atomic execution
+
+The `execute_payment` instruction performs two CPIs in sequence:
+
+1. **Burn** -- calls `token::burn` on the source mint, debiting the sender's token account
+2. **Mint** -- calls `token::mint_to` on the target mint, crediting the receiver's token account
+
+Both happen in the same Solana transaction. If the burn succeeds but the mint fails, the entire transaction reverts -- no tokens are lost.
+
+The mint CPI uses the Payment PDA as the signing authority. This means the target mint's authority must be set to the PDA (or in this demo, the bank wallet acts as both sender and mint authority).
+
+### Security constraints
+
+The program enforces:
+
+- **Status checks**: each instruction validates the payment is in the expected state
+- **Sender validation**: only the original sender can execute the payment
+- **Receiver validation**: the target token account must be owned by the receiver recorded at initialization (`InvalidReceiverATA` error otherwise)
+
+## CLI reference
+
+| Script | Usage | Description |
+|---|---|---|
+| `npm run deploy:stablecoin` | `-- <name> <symbol>` | Deploy an SPL token mint with Metaplex metadata |
+| `npm run deploy:program` | `[buffer_address]` | Deploy or upgrade the Anchor program via Dfns |
+| `npm run mint-tokens` | `-- <mint> <recipient> <amount>` | Mint tokens to an address |
+| `npm run init-payment` | `-- <id> <receiver> <amount>` | Initialize a payment PDA on-chain |
+| `npm run set-fx-rate` | `-- <id> <sender> <amount_out>` | Lock in the FX conversion rate |
+| `npm run execute-payment` | `-- <id>` | Execute the atomic burn/mint swap |
+| `npm run ui` | | Start the interactive web UI on port 3000 |
+
+All amounts are in **base units** (6 decimals). To send 100 tokens, pass `100000000`.
+
+## Project structure
+
+```
+cross-border-payments-solana/
+  programs/cross-border-payment/
+    src/lib.rs            Anchor program -- 3 instructions + state
+  dfns/
+    DfnsClient.ts         Dfns SDK setup, env config, exports
+    broadcast.ts          Shared helper to serialize + broadcast via Dfns
+    deploy-program.ts     Deploy/upgrade the Anchor program binary
+    deploy-stablecoin.ts  Deploy SPL token mints with Metaplex metadata
+    init-payment.ts       Initialize a payment PDA
+    set-fx-rate.ts        Set the FX conversion rate
+    execute-payment.ts    Execute the atomic burn/mint swap
+    mint-tokens.ts        Mint tokens to any address
+    server.ts             Express API server for the web UI
+    ui.html               Interactive web UI (single file, no build step)
+  tests/
+    cross-border-payment.ts   Full Anchor test suite (4 tests)
+  setup.sh                    One-command toolchain installer
+```

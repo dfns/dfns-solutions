@@ -1,0 +1,44 @@
+{
+  "name": "cross-border-payments-solana",
+  "version": "1.0.0",
+  "description": "Solana cross-border payment system with Dfns wallet integration",
+  "type": "module",
+  "scripts": {
+    "deploy:stablecoin": "tsx dfns/deploy-stablecoin.ts",
+    "deploy:program": "tsx dfns/deploy-program.ts",
+    "init-payment": "tsx dfns/init-payment.ts",
+    "set-fx-rate": "tsx dfns/set-fx-rate.ts",
+    "execute-payment": "tsx dfns/execute-payment.ts",
+    "mint-tokens": "tsx dfns/mint-tokens.ts",
+    "ui": "tsx dfns/server.ts",
+    "test:anchor": "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@dfns/sdk": "^0.8.12",
+    "@dfns/sdk-keysigner": "^0.8.12",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "@types/chai": "^5.0.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.3.3",
+    "chai": "^5.2.0",
+    "dotenv": "^17.3.1",
+    "mocha": "^11.1.0",
+    "ts-mocha": "^10.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
+    "@metaplex-foundation/umi": "^1.5.1",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.5.1",
+    "@metaplex-foundation/umi-signer-wallet-adapters": "^1.5.1",
+    "@metaplex-foundation/umi-web3js-adapters": "^1.5.1",
+    "@solana-program/loader-v3": "^0.3.0",
+    "express": "^5.2.1"
+  }
+}
