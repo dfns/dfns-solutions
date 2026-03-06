@@ -26,6 +26,14 @@ Process cross-border payments between two stablecoins (e.g. iEUR &rarr; iAUD) us
 
 [Get started &rarr;](./cross-border-payments/)
 
+### Cross-Border Payments on Solana
+
+Atomic stablecoin swap on Solana — burn tEUR from the sender and mint tSGD to the receiver in a single transaction using an Anchor program and Dfns KMS signing. Includes an interactive web UI.
+
+**Business use case:** Fintechs and remittance providers building on Solana who need atomic FX settlement with institutional key management.
+
+[Get started &rarr;](./cross-border-payments-solana/)
+
 ## Getting Started
 
 Pick a solution blueprint, open its folder, and follow the README — each one walks you through setup and running the app end to end.
