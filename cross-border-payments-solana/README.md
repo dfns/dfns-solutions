@@ -82,7 +82,8 @@ solana airdrop 2 <BANK_WALLET_ADDRESS> --url devnet
 ### 3. Configure environment
 
 ```bash
-cp .env.example dfns/.env
+cd dfns
+cp .env.example .env
 ```
 
 Fill in your `dfns/.env`:
