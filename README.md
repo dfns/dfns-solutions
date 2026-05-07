@@ -50,6 +50,14 @@ Full-stack web application where crypto wallets sit alongside traditional fiat a
 
 [Get started &rarr;](./bank-custody/)
 
+### Programmable Policy
+
+A Dfns Service Account decodes the ABI-encoded call data on pending wallet transactions and approves or denies them based on the function being called, the recipient and the amount. Static policies stop at amounts and addresses; this one reasons about what the transaction actually does.
+
+**Business use case:** Risk and compliance teams that need programmatic middle-tier approvals for treasury or token-issuance operations, with a human approver still available as a fallback.
+
+[Get started &rarr;](./programmable-policy/)
+
 ## Getting Started
 
 Pick a solution blueprint, open its folder, and follow the README — each one walks you through setup and running the app end to end.

@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "typeRoots": ["./node_modules/@types"]
+  },
+  "include": ["scripts/**/*.ts", "hardhat.config.ts"],
+  "exclude": ["node_modules"]
+}
