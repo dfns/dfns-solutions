@@ -58,6 +58,14 @@ A Dfns Service Account decodes the ABI-encoded call data on pending wallet trans
 
 [Get started &rarr;](./programmable-policy/)
 
+### X402 AI Agent Payments
+
+AI agents pay paywalled APIs autonomously with gasless USDC pull payments. The agent forwards a `402 Payment Required` challenge to a Dfns-powered signer, which enforces policy and produces an ERC-3009 EIP-712 signature; the merchant verifies it and broadcasts settlement from its own Dfns wallet, absorbing the gas.
+
+**Business use case:** Platforms hosting AI agents that need to authorize micro-payments to APIs, content, or services — with policy controls on spend, recipients, and chains, and no native gas required on the agent's side.
+
+[Get started &rarr;](./x402-ai-payments/)
+
 ## Getting Started
 
 Pick a solution blueprint, open its folder, and follow the README — each one walks you through setup and running the app end to end.
