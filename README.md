@@ -18,7 +18,7 @@ Deploy and manage your own ERC-20 stablecoin on Ethereum (Sepolia testnet) using
 
 [Get started &rarr;](./stablecoin-management/)
 
-### Cross-Border Payments with FX Settlement
+### Cross-Border Payments on Ethereum
 
 Process cross-border payments between two stablecoins (e.g. iEUR &rarr; iAUD) using an on-chain settlement contract and FX provider workflow.
 
@@ -33,6 +33,14 @@ Atomic stablecoin swap on Solana — burn tEUR from the sender and mint tSGD to 
 **Business use case:** Fintechs and remittance providers building on Solana who need atomic FX settlement with institutional key management.
 
 [Get started &rarr;](./cross-border-payments-solana/)
+
+### Confidential Token (ERC-7984)
+
+Deploy, mint, transfer, and reveal an ERC-7984 confidential token on Ethereum Sepolia — balances are FHE-encrypted on-chain using Zama FHEVM, readable only by the holder via a Dfns-signed EIP-712 authorization.
+
+**Business use case:** Financial institutions that need to issue tokens with confidential balances by default, with on-demand holder-authorized or public disclosure.
+
+[Get started &rarr;](./confidential-token/)
 
 ### Bond Issuance
 
@@ -57,6 +65,14 @@ A Dfns Service Account decodes the ABI-encoded call data on pending wallet trans
 **Business use case:** Risk and compliance teams that need programmatic middle-tier approvals for treasury or token-issuance operations, with a human approver still available as a fallback.
 
 [Get started &rarr;](./programmable-policy/)
+
+### Confidential Atomic Swap
+
+Atomic token swaps on Ethereum Sepolia combining Dfns wallet signing with Zama FHEVM (ERC-7984) encrypted balances — three flows: ERC-20 → confidential token (synchronous), confidential token → ERC-20 (async KMS decryption), and confidential token ↔ confidential token (atomic two-party).
+
+**Business use case:** Financial institutions that need to exchange tokenized assets without revealing amounts on-chain — settlement remains auditable through Dfns but balances stay encrypted end-to-end.
+
+[Get started &rarr;](./confidential-swap/)
 
 ### X402 AI Agent Payments
 
