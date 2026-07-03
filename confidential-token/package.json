@@ -10,20 +10,20 @@
     "reveal-public": "npx -y tsx dfns/RevealPublic.ts"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "@types/node": "^22.19.10",
-    "hardhat": "^2.24.0",
-    "typescript": "^5.9.3"
+    "@nomicfoundation/hardhat-toolbox": "5.0.0",
+    "@types/node": "22.19.19",
+    "hardhat": "2.28.6",
+    "typescript": "5.9.3"
   },
   "dependencies": {
-    "@dfns/sdk": "^0.8.10",
-    "@dfns/sdk-keysigner": "^0.8.10",
+    "@dfns/sdk": "0.8.21",
+    "@dfns/sdk-keysigner": "0.8.21",
     "@fhevm/solidity": "0.11.1",
     "@openzeppelin/confidential-contracts": "0.4.0",
-    "@openzeppelin/contracts": "^5.4.0",
+    "@openzeppelin/contracts": "5.6.1",
     "@zama-fhe/relayer-sdk": "0.4.1",
-    "dotenv": "^17.2.4",
-    "ethers": "^6.14.3",
-    "viem": "^2.45.2"
+    "dotenv": "17.4.2",
+    "ethers": "6.16.0",
+    "viem": "2.51.3"
   }
 }

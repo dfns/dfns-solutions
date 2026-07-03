@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {FHE, euint64, externalEuint64} from "@fhevm/solidity/lib/FHE.sol";
+import {FHE, ebool, euint64, externalEuint64} from "@fhevm/solidity/lib/FHE.sol";
 import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -80,6 +80,8 @@ contract ConfidentialSwap is Ownable, ZamaEthereumConfig {
     );
 
     event CTokenSwapFilled(uint256 indexed swapId);
+
+    event CTokenSwapCancelled(uint256 indexed swapId);
 
     constructor(address owner) Ownable(owner) {}
 
@@ -222,10 +224,20 @@ contract ConfidentialSwap is Ownable, ZamaEthereumConfig {
     }
 
     /**
-     * Receiver side. 
-     * 
-     * Completes the atomic swap: pulls the sender-specified amount of tokenB` from the receiver to the sender, then releases the escrowed `tokenA` to the receiver.
-     * 
+     * Receiver side.
+     *
+     * Completes the swap atomically. An ERC-7984 transfer silently moves 0 (it never reverts) when the payer is
+     * short, so we cannot assume leg B actually paid -- instead we gate leg A on the *encrypted* outcome of leg B:
+     *
+     *  - pull `amountB` of `tokenB` from receiver to sender; the token returns the amount actually moved (`amountB` or 0),
+     *  - `ok = (actuallyPaid == amountB)` is true only if the receiver paid in full,
+     *  - release the escrowed `tokenA` as `FHE.select(ok, amountA, 0)` to the receiver and the complementary
+     *    `FHE.select(ok, 0, amountA)` back to the sender.
+     *
+     * The two `tokenA` legs sum to `amountA` in every branch, so the contract always holds enough to cover both.
+     * Outcome: either the trade happens in full (receiver paid B, receives A) or nothing moves (receiver paid 0,
+     * escrow refunded to sender) -- all in one tx, with no path where the receiver walks away with A without paying B.
+     *
      * Receiver must have called `setOperator(swap, ...)` on `tokenB`.
      */
     function fillCTokenSwap(uint256 swapId) external {
@@ -234,13 +246,40 @@ contract ConfidentialSwap is Ownable, ZamaEthereumConfig {
         require(!s.filled, "Already filled");
         s.filled = true;
 
+        // Leg B: receiver pays the sender. `paid` is what the token actually moved (amountB or 0).
         FHE.allowTransient(s.amountBHandle, s.tokenB);
-        IERC7984(s.tokenB).confidentialTransferFrom(msg.sender, s.sender, s.amountBHandle);
+        euint64 paid = IERC7984(s.tokenB).confidentialTransferFrom(msg.sender, s.sender, s.amountBHandle);
+        ebool ok = FHE.eq(paid, s.amountBHandle);
 
-        FHE.allowTransient(s.amountAHandle, s.tokenA);
-        IERC7984(s.tokenA).confidentialTransfer(msg.sender, s.amountAHandle);
+        // Leg A: release escrow to the receiver only if B was paid in full; otherwise refund the sender.
+        euint64 toReceiver = FHE.select(ok, s.amountAHandle, FHE.asEuint64(0));
+        euint64 toSender = FHE.select(ok, FHE.asEuint64(0), s.amountAHandle);
+
+        FHE.allowTransient(toReceiver, s.tokenA);
+        IERC7984(s.tokenA).confidentialTransfer(msg.sender, toReceiver);
+
+        FHE.allowTransient(toSender, s.tokenA);
+        IERC7984(s.tokenA).confidentialTransfer(s.sender, toSender);
 
         emit CTokenSwapFilled(swapId);
+    }
+
+    /**
+     * Sender side, liveness escape hatch.
+     *
+     * If a swap is never filled, the sender reclaims their escrowed `tokenA`. Marks the swap terminal
+     * (reusing `filled`) so it can afterwards be neither filled nor cancelled again.
+     */
+    function cancelCTokenSwap(uint256 swapId) external {
+        PendingCTokenSwap storage s = cTokenSwaps[swapId];
+        require(s.sender == msg.sender, "Not sender");
+        require(!s.filled, "Already filled");
+        s.filled = true;
+
+        FHE.allowTransient(s.amountAHandle, s.tokenA);
+        IERC7984(s.tokenA).confidentialTransfer(s.sender, s.amountAHandle);
+
+        emit CTokenSwapCancelled(swapId);
     }
 
     function withdrawErc20(address erc20, address to, uint256 amount) external onlyOwner {
