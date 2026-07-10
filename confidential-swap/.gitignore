@@ -1,0 +1,10 @@
+/node_modules
+/dist
+/artifacts
+/cache
+/types
+/typechain-types
+/coverage
+.env
+.DS_Store
+deployment.json
