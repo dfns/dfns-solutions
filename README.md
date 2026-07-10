@@ -68,6 +68,8 @@ A Dfns Service Account decodes the ABI-encoded call data on pending wallet trans
 
 ### Confidential Atomic Swap
 
+> **Note:** This section/code is in beta.
+
 Atomic token swaps on Ethereum Sepolia combining Dfns wallet signing with Zama FHEVM (ERC-7984) encrypted balances — three flows: ERC-20 → confidential token (synchronous), confidential token → ERC-20 (async KMS decryption), and confidential token ↔ confidential token (atomic two-party).
 
 **Business use case:** Financial institutions that need to exchange tokenized assets without revealing amounts on-chain — settlement remains auditable through Dfns but balances stay encrypted end-to-end.
