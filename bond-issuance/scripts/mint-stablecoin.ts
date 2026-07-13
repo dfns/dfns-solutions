@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import readline from 'readline'
-import { dfnsApi, ISSUER_WALLET_ID, client } from './dfns.js'
+import { dfnsApi, ISSUER_WALLET_ID, broadcast } from './dfns.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -39,13 +39,9 @@ async function main() {
         const data = encodeFunctionData({ abi, functionName: 'mint', args: [toAddress, amount] })
 
         console.log('Broadcasting transaction...')
-        const result = await dfnsApi.wallets.broadcastTransaction({
-            walletId: ISSUER_WALLET_ID,
-            body: { kind: 'Evm', to: contractAddress, data } as any,
-        })
+        const result = await broadcast(ISSUER_WALLET_ID, contractAddress, data)
 
         console.log('Tx hash:', result.txHash)
-        await client.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` })
         console.log('Mint successful!')
     } catch (error) {
         console.error('Mint failed:', error)
