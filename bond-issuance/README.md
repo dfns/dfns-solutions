@@ -1,5 +1,7 @@
 # Bond Issuance
 
+Rev 2
+
 Tokenized corporate bond lifecycle on **Ethereum**, secured by [Dfns](https://www.dfns.co/) wallets.
 
 An issuer raises capital in Euro Stablecoins (EURC). Investors receive ERC-20 bond tokens representing their claim to periodic coupon payments and principal redemption at maturity. All on-chain transactions are signed through the Dfns KMS -- private keys never leave the Dfns infrastructure.
