@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import readline from 'readline'
-import { dfnsApi, ISSUER_WALLET_ID, client } from './dfns.js'
+import { ISSUER_WALLET_ID, readContract, broadcast } from './dfns.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -23,14 +23,13 @@ function loadAbi(name: string) {
 
 async function viewStatus() {
     console.log('\n--- Bond Status ---')
-    const addr = bondAddress as `0x${string}`
-    const read = (fn: string) => client.readContract({ address: addr, abi: bondAbi, functionName: fn })
+    const read = (fn: string) => readContract({ address: bondAddress, abi: bondAbi, functionName: fn })
 
     const totalIssued = await read('totalBondsIssued')
     const totalRedeemed = await read('totalBondsRedeemed')
-    const issuanceDate = await read('issuanceDate') as bigint
-    const maturityDate = await read('maturityDate') as bigint
-    const timeToNext = await read('timeToNextCoupon') as bigint
+    const issuanceDate = await read('issuanceDate') as string
+    const maturityDate = await read('maturityDate') as string
+    const timeToNext = await read('timeToNextCoupon') as string
 
     console.log(`Total Bonds Issued: ${totalIssued}`)
     console.log(`Total Bonds Redeemed: ${totalRedeemed}`)
@@ -39,17 +38,11 @@ async function viewStatus() {
     console.log(`Time to Next Coupon: ${timeToNext} seconds`)
 }
 
-async function broadcast(contractAddress: string, abi: any, functionName: string, args: any[] = []) {
+async function callFn(contractAddress: string, abi: any, functionName: string, args: any[] = []) {
     console.log(`Calling ${functionName}...`)
     const data = encodeFunctionData({ abi, functionName, args })
-
-    const result = await dfnsApi.wallets.broadcastTransaction({
-        walletId: ISSUER_WALLET_ID,
-        body: { kind: 'Evm', to: contractAddress, data } as any,
-    })
-
+    const result = await broadcast(ISSUER_WALLET_ID, contractAddress, data)
     console.log('Tx hash:', result.txHash)
-    await client.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` })
     console.log('Confirmed.\n')
 }
 
@@ -76,36 +69,36 @@ async function main() {
                 await viewStatus()
                 break
             case '2':
-                await broadcast(bondAddress, bondAbi, 'closePrimaryIssuance')
+                await callFn(bondAddress, bondAbi, 'closePrimaryIssuance')
                 break
             case '3':
-                await broadcast(bondAddress, bondAbi, 'withdrawProceeds')
+                await callFn(bondAddress, bondAbi, 'withdrawProceeds')
                 break
             case '4': {
                 const amountInput = await ask('Principal Amount to Return: ')
                 const amount = parseUnits(amountInput, 6)
-                const currencyAddr = await client.readContract({
-                    address: bondAddress as `0x${string}`, abi: bondAbi, functionName: 'currency',
+                const currencyAddr = await readContract({
+                    address: bondAddress, abi: bondAbi, functionName: 'currency',
                 }) as string
-                await broadcast(currencyAddr, currencyAbi, 'approve', [bondAddress, amount])
-                await broadcast(bondAddress, bondAbi, 'returnPrincipal', [amount])
+                await callFn(currencyAddr, currencyAbi, 'approve', [bondAddress, amount])
+                await callFn(bondAddress, bondAbi, 'returnPrincipal', [amount])
                 break
             }
             case '5': {
-                const couponAmount = await client.readContract({
-                    address: bondAddress as `0x${string}`, abi: bondAbi, functionName: 'getCouponAmount',
-                }) as bigint
-                const nextCoupon = await client.readContract({
-                    address: bondAddress as `0x${string}`, abi: bondAbi, functionName: 'getNextUnfundedCoupon',
-                }) as bigint
+                const couponAmount = BigInt(await readContract({
+                    address: bondAddress, abi: bondAbi, functionName: 'getCouponAmount',
+                }) as string)
+                const nextCoupon = await readContract({
+                    address: bondAddress, abi: bondAbi, functionName: 'getNextUnfundedCoupon',
+                }) as string
                 console.log(`Next Coupon Index: ${nextCoupon}`)
                 console.log(`Required Amount: ${formatUnits(couponAmount, 6)} EURC`)
 
-                const currencyAddr = await client.readContract({
-                    address: bondAddress as `0x${string}`, abi: bondAbi, functionName: 'currency',
+                const currencyAddr = await readContract({
+                    address: bondAddress, abi: bondAbi, functionName: 'currency',
                 }) as string
-                await broadcast(currencyAddr, currencyAbi, 'approve', [bondAddress, couponAmount])
-                await broadcast(bondAddress, bondAbi, 'depositCoupon', [])
+                await callFn(currencyAddr, currencyAbi, 'approve', [bondAddress, couponAmount])
+                await callFn(bondAddress, bondAbi, 'depositCoupon', [])
                 break
             }
             case '6':

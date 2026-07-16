@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import readline from 'readline'
-import { dfnsApi, ISSUER_WALLET_ID, client } from './dfns.js'
+import { dfnsApi, ISSUER_WALLET_ID, broadcast } from './dfns.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -33,8 +33,7 @@ async function main() {
         const frequency = BigInt(frequencyInput)
 
         const durationInput = await ask('Duration in seconds (default: 31536000 = 1 year): ') || '31536000'
-        const currentBlock = await client.getBlock()
-        const maturityDate = currentBlock.timestamp + BigInt(durationInput)
+        const maturityDate = BigInt(Math.floor(Date.now() / 1000)) + BigInt(durationInput)
 
         const capInput = await ask('Cap Amount (default: 1000000): ') || '1000000'
         const cap = parseUnits(capInput, 6)
@@ -54,19 +53,10 @@ async function main() {
         })
 
         console.log('Broadcasting deployment...')
-        const result = await dfnsApi.wallets.broadcastTransaction({
-            walletId: ISSUER_WALLET_ID,
-            body: { kind: 'Evm', to: undefined, data: deployData } as any,
-        })
+        const result = await broadcast(ISSUER_WALLET_ID, undefined, deployData)
 
         console.log('Tx hash:', result.txHash)
-
-        if (result.txHash) {
-            const receipt = await client.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` })
-            console.log('Bond deployed at:', receipt.contractAddress)
-        } else {
-            console.log('Transaction pending approval. ID:', result.id)
-        }
+        console.log(`Deployed -- find the contract address at: https://sepolia.etherscan.io/tx/${result.txHash}`)
     } catch (error) {
         console.error('Deployment failed:', error)
         rl.close()

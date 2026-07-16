@@ -101,6 +101,8 @@
         <div class="stat"><div class="stat-label">Total Subscribed</div><div class="stat-value" id="st-subscribed">—</div></div>
         <div class="stat"><div class="stat-label">EURC Balance</div><div class="stat-value" id="st-issuer-eurc">—</div></div>
         <div class="stat"><div class="stat-label">Next Coupon Due</div><div class="stat-value" id="st-next-coupon">—</div></div>
+        <div class="stat"><div class="stat-label">Coupon Amount</div><div class="stat-value" id="st-coupon-amount">—</div></div>
+        <div class="stat"><div class="stat-label">Next Unfunded Coupon #</div><div class="stat-value" id="st-next-unfunded">—</div></div>
       </div>
     </div>
 
@@ -112,6 +114,10 @@
           <div class="step-label">Deploy StableCoin</div>
           <div class="step-detail" id="sd-deploy-stable">Deploy an ERC-20 stablecoin (EURC) used as the settlement currency for the bond</div>
           <div class="row"><button onclick="deployStablecoin()">Deploy</button></div>
+          <div class="row" id="confirm-deploy-stable">
+            <input id="addr-deploy-stable" placeholder="Or paste an existing/deployed address" style="width:280px;">
+            <button onclick="confirmAddress('stablecoin')">Use address</button>
+          </div>
         </div>
       </div>
       <div class="step" id="s-mint">
@@ -136,6 +142,10 @@
             <label style="font-size:11px; color:var(--muted);">Coupon freq (s)<br><input id="bondFreq" value="300" style="width:85px; margin-top:3px;"></label>
             <label style="font-size:11px; color:var(--muted);">Duration (s)<br><input id="bondDuration" value="3600" style="width:85px; margin-top:3px;"></label>
             <button onclick="deployBond()" style="align-self:flex-end;">Deploy</button>
+          </div>
+          <div class="row" id="confirm-deploy-bond">
+            <input id="addr-deploy-bond" placeholder="Or paste an existing/deployed address" style="width:280px;">
+            <button onclick="confirmAddress('bond')">Use address</button>
           </div>
         </div>
       </div>
@@ -222,10 +232,11 @@
       <div class="step">
         <div class="step-num" id="sn-claim-coupon">9</div>
         <div class="step-body">
-          <div class="step-label">Claim Coupon <span id="couponLabel" style="font-weight:400; color:var(--muted); font-size:12px;"></span></div>
-          <div class="step-detail" id="sd-claim-coupon">Collect your pro-rata share of the coupon interest payment. The coupon must be funded and its date must have passed</div>
+          <div class="step-label">Claim Coupon</div>
+          <div class="step-detail" id="sd-claim-coupon">Collect your pro-rata share of the coupon interest payment. The coupon must be funded and its date must have passed. The suggested index below is the most recently funded coupon (Next Unfunded Coupon # − 1) — override it if you need to claim a different one</div>
           <div class="row">
-            <button onclick="claimCoupon()">Claim</button>
+            <label style="font-size:11px; color:var(--muted);">Coupon Index<br><input id="couponIndex" value="1" oninput="couponIndexTouched = true" style="width:80px; margin-top:3px;"></label>
+            <button onclick="claimCoupon()" style="align-self:flex-end;">Claim</button>
           </div>
         </div>
       </div>
@@ -246,7 +257,7 @@
 <script>
 const $ = id => document.getElementById(id);
 let statusInterval;
-let nextCouponIndex = 1;
+let couponIndexTouched = false;
 
 const stepOrder = ['deploy-stable','mint','deploy-bond','subscribe','close','withdraw','claim-bond','coupon','claim-coupon','principal','redeem'];
 
@@ -317,9 +328,13 @@ async function refreshStatus() {
     $('st-investor-eurc').textContent = s.investorStableBalance;
     $('st-issuer-eurc').textContent = s.issuerStableBalance;
     $('st-next-coupon').textContent = s.timeToNextCoupon > 0 ? s.timeToNextCoupon + 's' : 'Now';
-    if (s.nextCoupon) {
-      nextCouponIndex = s.nextCoupon;
-      $('couponLabel').textContent = `(#${nextCouponIndex})`;
+    $('st-coupon-amount').textContent = s.couponAmount + ' EURC';
+    $('st-next-unfunded').textContent = s.nextCoupon;
+    // Suggest the most recently funded coupon (nextCoupon - 1) as the one to
+    // claim, since getNextUnfundedCoupon() points at the NEXT one still owed
+    // -- but don't fight the operator once they've typed their own index.
+    if (s.nextCoupon && !couponIndexTouched) {
+      $('couponIndex').value = Math.max(1, s.nextCoupon - 1);
     }
     if (s.maturityDate > 0) {
       const remaining = s.maturityDate - s.now;
@@ -336,11 +351,32 @@ async function deployStablecoin() {
   log('issuer', 'Deploying StableCoin...');
   try {
     const r = await api('POST', '/deploy/stablecoin', { name: 'Euro Coin', symbol: 'EURC' });
-    markStep('deploy-stable', 'done', `Deployed: <span class="addr">${r.address}</span>`);
-    log('issuer', `StableCoin deployed at ${r.address}`, 'ok');
+    markStep('deploy-stable', 'active', `Confirmed. Paste the contract address below.`);
+    log('issuer', `StableCoin deployed, enter the address below to continue`, 'ok');
     log('issuer', `Tx: ${txLink(r.txHash)}`, 'tx');
   } catch (e) {
     markStep('deploy-stable', 'error', e.message);
+    log('issuer', e.message, 'err');
+  }
+}
+
+// DFNS has no API to read back a deployment's resulting contract address, so
+// the operator either looks it up via the tx link above and pastes it in, or
+// (if it was already deployed in an earlier session) enters it directly.
+async function confirmAddress(which) {
+  const inputId = which === 'stablecoin' ? 'addr-deploy-stable' : 'addr-deploy-bond';
+  const stepId = which === 'stablecoin' ? 'deploy-stable' : 'deploy-bond';
+  const address = $(inputId).value.trim();
+  if (!address) return;
+  try {
+    await api('POST', '/set-address', { which, address });
+    markStep(stepId, 'done', `Using: <span class="addr">${address}</span>`);
+    log('issuer', `${which === 'stablecoin' ? 'StableCoin' : 'Bond'} address set: ${address}`, 'ok');
+    if (which === 'bond') {
+      statusInterval = setInterval(refreshStatus, 5000);
+      refreshStatus();
+    }
+  } catch (e) {
     log('issuer', e.message, 'err');
   }
 }
@@ -374,11 +410,9 @@ async function deployBond() {
       frequency: $('bondFreq').value,
       duration: $('bondDuration').value,
     });
-    markStep('deploy-bond', 'done', `Deployed: <span class="addr">${r.address}</span>`);
-    log('issuer', `Bond deployed at ${r.address}`, 'ok');
+    markStep('deploy-bond', 'active', `Confirmed. Paste the contract address below.`);
+    log('issuer', `Bond deployed, enter the address below to continue`, 'ok');
     log('issuer', `Tx: ${txLink(r.txHash)}`, 'tx');
-    statusInterval = setInterval(refreshStatus, 5000);
-    refreshStatus();
   } catch (e) {
     markStep('deploy-bond', 'error', e.message);
     log('issuer', e.message, 'err');
@@ -462,7 +496,8 @@ async function depositCoupon() {
 }
 
 async function claimCoupon() {
-  const idx = nextCouponIndex;
+  const idx = $('couponIndex').value.trim();
+  if (!idx) return;
   markStep('claim-coupon', 'active', `Claiming #${idx}...<span class="spinner"></span>`);
   log('investor', `Claiming coupon #${idx}...`);
   try {
