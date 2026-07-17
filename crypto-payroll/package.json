@@ -1,0 +1,27 @@
+{
+  "name": "crypto-payroll",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "policy:create": "npx tsx scripts/Setup.ts",
+    "payroll:run": "npx tsx scripts/RunPayroll.ts",
+    "approvals:list": "npx tsx scripts/ListPending.ts",
+    "approvals:auto": "npx tsx scripts/AutoReview.ts",
+    "approvals:approve": "npx tsx scripts/Approve.ts",
+    "approvals:reject": "npx tsx scripts/Reject.ts",
+    "status": "npx tsx scripts/Status.ts",
+    "users:list": "npx tsx scripts/ListUsers.ts"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "~5.8.0"
+  },
+  "dependencies": {
+    "@dfns/sdk": "^0.8.21",
+    "@dfns/sdk-keysigner": "^0.8.21",
+    "dotenv": "^17.0.0",
+    "viem": "^2.45.0"
+  }
+}
