@@ -1,0 +1,23 @@
+{
+  "name": "x402-session-payments-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Next.js demo — a slot machine paid for by Dfns X402 session payments, settled through the standalone facilitator service (sign once, pull the lever many times)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^15.3.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5",
+    "typescript": "^5.8.3"
+  }
+}

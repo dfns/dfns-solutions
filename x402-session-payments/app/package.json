@@ -1,0 +1,24 @@
+{
+  "name": "x402-session-payments-demo",
+  "version": "1.0.0",
+  "description": "Dfns X402 session blueprint — one on-chain approve authorizes a budget/recipient/TTL envelope, then autonomous ERC20 transferFrom payments settle within it",
+  "main": "src/demo.ts",
+  "scripts": {
+    "start": "ts-node -O '{\"module\":\"commonjs\", \"verbatimModuleSyntax\": false}' src/demo.ts",
+    "wallets:list": "ts-node -O '{\"module\":\"commonjs\", \"verbatimModuleSyntax\": false}' src/list-wallets.ts"
+  },
+  "keywords": ["dfns", "x402", "session", "erc-20", "approve", "ai-agent", "stablecoin", "usdc"],
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "@dfns/sdk": "^0.8.20",
+    "@dfns/sdk-keysigner": "^0.8.20",
+    "dotenv": "^17.0.0",
+    "ethers": "^6.16.0"
+  }
+}

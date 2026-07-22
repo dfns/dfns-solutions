@@ -1,0 +1,26 @@
+{
+  "name": "x402-session-facilitator",
+  "version": "1.0.0",
+  "description": "Dfns-backed x402 session facilitator — HTTP /supported, /verify, /settle, /sessions endpoints, backed by wallets.broadcastTransaction (ERC20 approve + transferFrom) instead of a raw private key",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "ts-node -O '{\"module\":\"commonjs\", \"verbatimModuleSyntax\": false}' src/index.ts",
+    "dev": "ts-node -O '{\"module\":\"commonjs\", \"verbatimModuleSyntax\": false}' src/index.ts"
+  },
+  "keywords": ["dfns", "x402", "session", "facilitator", "erc-20", "usdc"],
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "@dfns/sdk": "^0.8.20",
+    "@dfns/sdk-keysigner": "^0.8.20",
+    "dotenv": "^17.0.0",
+    "ethers": "^6.16.0",
+    "express": "^4.21.0"
+  }
+}
