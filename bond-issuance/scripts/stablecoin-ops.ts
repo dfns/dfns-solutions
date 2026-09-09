@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import readline from 'readline'
-import { dfnsApi, ISSUER_WALLET_ID, client } from './dfns.js'
+import { dfnsApi, ISSUER_WALLET_ID, readContract, broadcast } from './dfns.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -22,14 +22,14 @@ function loadAbi(name: string) {
 
 async function viewStatus() {
     console.log('\n--- StableCoin Status ---')
-    const addr = currencyAddress as `0x${string}`
+    const addr = currencyAddress
 
-    const totalMinted = await client.readContract({ address: addr, abi: currencyAbi, functionName: 'totalMinted' }) as bigint
-    const totalBurnt = await client.readContract({ address: addr, abi: currencyAbi, functionName: 'totalBurnt' }) as bigint
-    const paused = await client.readContract({ address: addr, abi: currencyAbi, functionName: 'paused' })
+    const totalMinted = BigInt(await readContract({ address: addr, abi: currencyAbi, functionName: 'totalMinted' }) as string)
+    const totalBurnt = BigInt(await readContract({ address: addr, abi: currencyAbi, functionName: 'totalBurnt' }) as string)
+    const paused = await readContract({ address: addr, abi: currencyAbi, functionName: 'paused' })
 
     const wallet = await dfnsApi.wallets.getWallet({ walletId: ISSUER_WALLET_ID })
-    const balance = await client.readContract({ address: addr, abi: currencyAbi, functionName: 'balanceOf', args: [wallet.address] }) as bigint
+    const balance = BigInt(await readContract({ address: addr, abi: currencyAbi, functionName: 'balanceOf', args: [wallet.address] }) as string)
 
     console.log(`Total Minted: ${formatUnits(totalMinted, 6)}`)
     console.log(`Total Burnt: ${formatUnits(totalBurnt, 6)}`)
@@ -37,17 +37,11 @@ async function viewStatus() {
     console.log(`Issuer Balance: ${formatUnits(balance, 6)}`)
 }
 
-async function broadcast(functionName: string, args: any[] = []) {
+async function callFn(functionName: string, args: any[] = []) {
     console.log(`Calling ${functionName}...`)
     const data = encodeFunctionData({ abi: currencyAbi, functionName, args })
-
-    const result = await dfnsApi.wallets.broadcastTransaction({
-        walletId: ISSUER_WALLET_ID,
-        body: { kind: 'Evm', to: currencyAddress, data } as any,
-    })
-
+    const result = await broadcast(ISSUER_WALLET_ID, currencyAddress, data)
     console.log('Tx hash:', result.txHash)
-    await client.waitForTransactionReceipt({ hash: result.txHash as `0x${string}` })
     console.log('Confirmed.\n')
 }
 
@@ -75,19 +69,19 @@ async function main() {
             case '2': {
                 const to = await ask('Recipient Address: ')
                 const amount = parseUnits(await ask('Amount to Mint: '), 6)
-                await broadcast('mint', [to, amount])
+                await callFn('mint', [to, amount])
                 break
             }
             case '3': {
                 const amount = parseUnits(await ask('Amount to Burn: '), 6)
-                await broadcast('burn', [amount])
+                await callFn('burn', [amount])
                 break
             }
             case '4':
-                await broadcast('pause')
+                await callFn('pause')
                 break
             case '5':
-                await broadcast('unpause')
+                await callFn('unpause')
                 break
             case '6':
                 rl.close()
