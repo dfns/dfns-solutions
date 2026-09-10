@@ -1,0 +1,29 @@
+{
+  "name": "dfns-confidential-token",
+  "version": "1.0.0",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "deploy": "npx -y tsx dfns/Deploy.ts",
+    "mint": "npx -y tsx dfns/Mint.ts",
+    "transfer": "npx -y tsx dfns/Transfer.ts",
+    "reveal-balance": "npx -y tsx dfns/RevealBalance.ts",
+    "reveal-public": "npx -y tsx dfns/RevealPublic.ts"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "5.0.0",
+    "@types/node": "22.19.19",
+    "hardhat": "2.28.6",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "@dfns/sdk": "0.8.21",
+    "@dfns/sdk-keysigner": "0.8.21",
+    "@fhevm/solidity": "0.11.1",
+    "@openzeppelin/confidential-contracts": "0.4.0",
+    "@openzeppelin/contracts": "5.6.1",
+    "@zama-fhe/relayer-sdk": "0.4.1",
+    "dotenv": "17.4.2",
+    "ethers": "6.16.0",
+    "viem": "2.51.3"
+  }
+}

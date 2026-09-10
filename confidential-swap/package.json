@@ -1,0 +1,35 @@
+{
+  "name": "dfns-zama-confidential-swap",
+  "version": "1.0.0",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "deploy:plain": "npx -y tsx dfns/DeployPlainToken.ts",
+    "deploy:confTokens": "npx -y tsx dfns/DeployConfidentialTokens.ts",
+    "deploy:swap": "npx -y tsx dfns/DeploySwap.ts",
+    "mint:plain": "npx -y tsx dfns/MintPlainToken.ts",
+    "mint:confToken": "npx -y tsx dfns/MintConfidentialToken.ts",
+    "approve": "npx -y tsx dfns/Approve.ts",
+    "swap:erc20-to-confToken": "npx -y tsx dfns/SwapErc20ToCToken.ts",
+    "swap:confToken-to-erc20": "npx -y tsx dfns/SwapCTokenToErc20.ts",
+    "swap:confToken-to-confToken": "npx -y tsx dfns/SwapCTokenToCToken.ts",
+    "reveal": "npx -y tsx dfns/RevealBalance.ts",
+    "reveal:all": "npx -y tsx dfns/RevealAllBalances.ts"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "5.0.0",
+    "@types/node": "22.19.19",
+    "hardhat": "2.28.6",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "@dfns/sdk": "0.8.21",
+    "@dfns/sdk-keysigner": "0.8.21",
+    "@fhevm/solidity": "0.11.1",
+    "@openzeppelin/confidential-contracts": "0.4.0",
+    "@openzeppelin/contracts": "5.6.1",
+    "@zama-fhe/relayer-sdk": "0.4.1",
+    "dotenv": "17.4.2",
+    "ethers": "6.16.0",
+    "viem": "2.51.3"
+  }
+}
