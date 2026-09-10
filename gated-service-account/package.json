@@ -4,16 +4,15 @@
   "description": "Gate a DFNS service account with the DFNS policy engine, so every user action it signs requires a quorum-approved MPC signature.",
   "type": "module",
   "scripts": {
-    "setup": "tsx e2e.ts setup",
-    "go": "tsx e2e.ts go",
-    "cleanup": "tsx e2e.ts cleanup"
+    "setup": "node e2e.ts setup",
+    "go": "node e2e.ts go",
+    "cleanup": "node e2e.ts cleanup"
   },
   "dependencies": {
     "dotenv": "^17.3.1"
   },
   "devDependencies": {
     "@types/node": "^22.19.11",
-    "tsx": "^4.21.0",
     "typescript": "~5.8.0"
   }
 }

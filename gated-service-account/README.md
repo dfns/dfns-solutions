@@ -32,7 +32,7 @@ The key is scoped to the policy through a **proxy wallet**: policies filter on w
 
 - A DFNS **development** organization
 - An admin identity that can create keys, wallets, policies, and permissions, and vote on approvals
-- Node.js v22+
+- Node.js v22.18+ (runs TypeScript natively via type stripping)
 
 ## Setup
 
