@@ -28,6 +28,24 @@ service account          admin identity              approval quorum
 
 The key is scoped to the policy through a **proxy wallet**: policies filter on wallet tags, not key ids, and a key-based signature request matches a policy through the wallets built on that key.
 
+Two identities appear by necessity, not by choice: requesting the MPC signature is itself a user action, and the service account's only credential *is* the gated key — it can never bootstrap its own signature request. Any non-gated identity with `Keys:Signatures:Create` can play that operator role; this demo uses the admin identity, a production app typically uses a dedicated operator service account.
+
+## The integration is one class
+
+The whole gate is packaged as a [`CredentialSigner`](https://github.com/dfns/dfns-sdk-ts) for the DFNS TypeScript SDK. `GatedKeySigner.sign()` runs the challenge through the quorum-held MPC key (signature request → policy hold → approval → signed assertion), so the gated client is a completely ordinary `DfnsApiClient`:
+
+```ts
+const sa = new DfnsApiClient({
+  authToken: GATED_SA_TOKEN,
+  signer: new GatedKeySigner({ keyId, operator: admin, autoApprove }),
+})
+
+await sa.wallets.createWallet({ body: { network: 'SolanaDevnet', name: 'created-under-quorum' } })
+// ^ pauses at the policy, resumes when the quorum approves
+```
+
+Nothing downstream of the constructor knows the gate exists.
+
 ## What you need
 
 - A DFNS **development** organization

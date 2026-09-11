@@ -9,6 +9,8 @@
     "cleanup": "node e2e.ts cleanup"
   },
   "dependencies": {
+    "@dfns/sdk": "^0.8.29",
+    "@dfns/sdk-keysigner": "^0.8.29",
     "dotenv": "^17.3.1"
   },
   "devDependencies": {
