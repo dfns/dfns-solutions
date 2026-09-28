@@ -1,0 +1,21 @@
+{
+  "name": "attestations",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "register:schema": "npx tsx scripts/register-schema.ts",
+    "attest": "npx tsx scripts/attest.ts",
+    "verify": "npx tsx scripts/verify-attestation.ts"
+  },
+  "dependencies": {
+    "@dfns/sdk": "^0.8.11",
+    "@dfns/sdk-keysigner": "^0.8.11",
+    "dotenv": "^17.3.1",
+    "viem": "^2.46.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.11",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.0"
+  }
+}
