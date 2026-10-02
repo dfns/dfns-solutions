@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Collateral Lending — Dfns</title>
+<style>
+  :root {
+    --bg: #0f172a; --panel: #111c33; --card: #16233f; --line: #26375a; --inset: #0d1629;
+    --text: #f1f5f9; --muted: #94a3b8; --dim: #475569;
+    --borrower: #22c55e; --borrower-soft: rgba(34, 197, 94, 0.14);
+    --lender: #3b82f6; --lender-soft: rgba(59, 130, 246, 0.14);
+    --risk: #a78bfa;
+    --ok: #4ade80; --warn: #facc15; --bad: #f87171;
+    --accent: var(--borrower); --accent-soft: var(--borrower-soft);
+  }
+  body.lender { --accent: var(--lender); --accent-soft: var(--lender-soft); }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 13px; }
+  .mono { font-family: 'SF Mono', 'Fira Code', monospace; }
+  a { color: #60a5fa; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header { padding: 12px 24px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  .tag { font-size: 11px; color: #fff; padding: 2px 8px; border-radius: 9999px; background: var(--dim); }
+  .spacer { flex: 1; }
+
+  .toggle { display: flex; background: var(--inset); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+  .toggle button { background: transparent; color: var(--muted); padding: 6px 16px; }
+  .toggle button.on[data-actor=borrower] { background: var(--borrower); color: #fff; }
+  .toggle button.on[data-actor=lender] { background: var(--lender); color: #fff; }
+
+  .price { display: flex; align-items: center; gap: 12px; background: var(--inset); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; }
+  .price .big { font-size: 16px; font-weight: 600; }
+  .price .sub { font-size: 11px; color: var(--muted); }
+  .price input[type=range] { width: 120px; accent-color: var(--risk); }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; padding: 16px 24px; }
+  .layout > * { min-width: 0; }
+  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; padding: 16px; } }
+  @media (max-width: 600px) {
+    header { padding: 12px 16px; }
+    .price { width: 100%; flex-wrap: wrap; }
+    .loan .stats { grid-template-columns: repeat(2, 1fr); }
+    .loan-head .id { word-break: break-all; }
+    .ev-head { flex-wrap: wrap; }
+  }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .card h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .card h3 .hint { font-weight: 400; color: var(--muted); font-size: 12px; }
+  .card p.note { color: var(--muted); font-size: 12px; line-height: 1.5; margin-bottom: 10px; }
+  .view-title { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--accent); }
+  .view-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+  .stat { background: var(--inset); border-radius: 6px; padding: 10px; }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .stat-value { font-size: 16px; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .addr { font-family: 'SF Mono', monospace; font-size: 11px; color: var(--muted); word-break: break-all; margin-top: 8px; }
+
+  .row { display: flex; gap: 8px; margin-top: 8px; align-items: flex-end; flex-wrap: wrap; }
+  label.field { font-size: 11px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+  input, select { background: var(--inset); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; color: var(--text); font-size: 13px; width: 130px; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  button { border: none; border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; background: var(--accent); color: #fff; }
+  button:hover { filter: brightness(1.12); }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
+  button.danger { background: #dc2626; }
+  button:disabled { background: var(--dim) !important; color: var(--muted); cursor: not-allowed; filter: none; border-color: transparent; }
+  .preview { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .preview b { color: var(--text); }
+
+  .pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; background: var(--dim); color: #fff; }
+  .pill.Requested { background: #64748b; }
+  .pill.Active { background: #16a34a; }
+  .pill.MarginCall { background: #ca8a04; }
+  .pill.Liquidating { background: #ea580c; }
+  .pill.Liquidated { background: #dc2626; }
+  .pill.Repaid { background: #0891b2; }
+  .pill.Rejected { background: #475569; }
+
+  .loan { background: var(--inset); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+  .loan-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .loan-head .id { font-family: 'SF Mono', monospace; font-size: 12px; color: var(--muted); }
+  .loan .stats { grid-template-columns: repeat(4, 1fr); }
+  .loan .stat { background: var(--card); }
+  .banner { border-radius: 6px; padding: 8px 10px; margin-top: 10px; font-size: 12px; line-height: 1.5; }
+  .banner.warn { background: rgba(250, 204, 21, 0.12); border: 1px solid rgba(250, 204, 21, 0.4); }
+  .banner.bad { background: rgba(248, 113, 113, 0.12); border: 1px solid rgba(248, 113, 113, 0.4); }
+  .banner.info { background: rgba(96, 165, 250, 0.1); border: 1px solid rgba(96, 165, 250, 0.35); }
+
+  .ltv { margin-top: 10px; }
+  .ltv-bar { position: relative; height: 10px; border-radius: 5px; background: linear-gradient(90deg, rgba(74,222,128,.25) 0 var(--mc), rgba(250,204,21,.3) var(--mc) var(--liq), rgba(248,113,113,.35) var(--liq) 100%); }
+  .ltv-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--ok); transition: width .4s; }
+  .ltv-fill.warn { background: var(--warn); }
+  .ltv-fill.bad { background: var(--bad); }
+  .ltv-mark { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); opacity: .6; }
+  .ltv-legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; padding: 6px 6px; border-bottom: 1px solid var(--line); }
+  td { padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; font-variant-numeric: tabular-nums; }
+  td .ltv { margin-top: 0; min-width: 110px; }
+  td .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .empty { color: var(--muted); font-size: 12px; padding: 8px 0; }
+
+  details.settings summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; }
+  details.settings summary::before { content: '▸'; color: var(--muted); }
+  details.settings[open] summary::before { content: '▾'; }
+  .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+  .settings-grid input, .settings-grid select { width: 100%; }
+  .check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); }
+  .check input { width: auto; }
+
+  .risk-loan { display: grid; grid-template-columns: 90px 1fr 70px; gap: 10px; align-items: center; padding: 6px 0; }
+  .risk-loan .id { font-family: 'SF Mono', monospace; font-size: 11px; color: var(--muted); }
+  .risk-loan .val { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .timeline { max-height: calc(100vh - 360px); min-height: 300px; overflow-y: auto; }
+  .ev { border-left: 3px solid var(--dim); padding: 6px 10px; margin-bottom: 6px; background: var(--inset); border-radius: 0 6px 6px 0; }
+  .ev.borrower { border-left-color: var(--borrower); }
+  .ev.lender { border-left-color: var(--lender); }
+  .ev.risk { border-left-color: var(--risk); }
+  .ev.error { background: rgba(248, 113, 113, 0.08); }
+  .ev-head { display: flex; gap: 8px; align-items: baseline; }
+  .ev-actor { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); min-width: 56px; }
+  .ev-title { flex: 1; font-size: 12px; }
+  .ev.dfns .ev-title { font-family: 'SF Mono', monospace; font-size: 11px; }
+  .ev.error .ev-title { color: var(--bad); }
+  .ev.transition .ev-title { font-weight: 600; }
+  .ev-time { font-size: 10px; color: var(--dim); }
+  .ev details { margin-top: 4px; }
+  .ev summary { font-size: 11px; color: var(--muted); cursor: pointer; }
+  .ev pre { font-family: 'SF Mono', monospace; font-size: 10.5px; color: var(--muted); background: #0a1120; border-radius: 4px; padding: 8px; overflow-x: auto; max-height: 260px; margin-top: 4px; white-space: pre-wrap; word-break: break-all; }
+
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #7f1d1d; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 12px; max-width: 80vw; display: none; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+  #toast.ok { background: #14532d; }
+  .spinner { display: inline-block; width: 11px; height: 11px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: -1px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Collateral Lending</h1>
+  <span class="tag" style="background:#3b82f6">Dfns Vaults &amp; Locks</span>
+  <span class="tag">Sepolia</span>
+  <div class="toggle" id="actorToggle">
+    <button data-actor="borrower" class="on">Borrower</button>
+    <button data-actor="lender">Lender</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="price">
+    <div>
+      <div class="sub">ETH / USD <span id="priceSource"></span></div>
+      <div class="big" id="price">—</div>
+    </div>
+    <div>
+      <div class="sub">Live <span id="livePrice">—</span></div>
+      <div class="sub" id="priceError" style="color:var(--bad)"></div>
+    </div>
+    <div id="shockBox">
+      <div class="sub">Price shock <b id="shockValue">×1.00</b></div>
+      <input type="range" id="shock" min="0.3" max="1.5" step="0.01" value="1">
+    </div>
+    <div id="manualBox" hidden>
+      <div class="sub">Manual price</div>
+      <input id="manualPrice" style="width:90px">
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <main>
+    <!-- ════════════ BORROWER ════════════ -->
+    <section id="view-borrower">
+      <div class="view-title"><span class="dot"></span> Borrower</div>
+
+      <div class="card">
+        <h3>Borrower vault <span class="hint">ETH collateral and borrowed <span data-asset>PYUSD</span>, in one Dfns vault</span></h3>
+        <div class="stats">
+          <div class="stat"><div class="stat-label">ETH available</div><div class="stat-value" id="b-available">—</div></div>
+          <div class="stat"><div class="stat-label">ETH quarantined</div><div class="stat-value" id="b-quarantined">—</div></div>
+          <div class="stat"><div class="stat-label">ETH locked</div><div class="stat-value" id="b-locked">—</div></div>
+          <div class="stat"><div class="stat-label"><span data-asset>PYUSD</span> available</div><div class="stat-value" id="b-loan">—</div></div>
+        </div>
+        <div class="addr" id="b-vaultAddr"></div>
+      </div>
+
+      <div class="card">
+        <h3>1 · Deposit and accept funds</h3>
+        <p class="note">Send Sepolia ETH to the vault address above from any wallet or faucet. Everything that reaches the vault, including the <span data-asset>PYUSD</span> payout, lands as <b>Quarantined</b> and must be accepted before it counts as Available. Keep some ETH unpledged: the vault pays its own gas.</p>
+        <div id="b-quarantines"></div>
+      </div>
+
+      <div class="card">
+        <h3>2 · Request a loan</h3>
+        <p class="note">Pledge Available ETH and borrow <span data-asset>PYUSD</span>. The lender locks the collateral in your vault. You can't move it while the lock is live, and the lender can only send it to a fixed beneficiary address.</p>
+        <div class="row">
+          <label class="field">Collateral (ETH)<input id="reqCollateral" value="0.01"></label>
+          <label class="field"><span>Principal (<span data-asset>PYUSD</span>)</span><input id="reqPrincipal" value="10"></label>
+          <button data-action="request">Request loan</button>
+        </div>
+        <div class="preview" id="reqPreview"></div>
+      </div>
+
+      <div class="card">
+        <h3>3 · My loans</h3>
+        <div id="b-loans"></div>
+      </div>
+
+      <div class="card">
+        <h3>4 · Withdraw</h3>
+        <p class="note">Moves Available ETH out of the vault to any address. Locked collateral can't be withdrawn.</p>
+        <div class="row">
+          <label class="field">Amount (ETH)<input id="withdrawAmount" value="0.01"></label>
+          <label class="field">To address<input id="withdrawTo" placeholder="0x…"></label>
+          <button data-action="withdraw">Withdraw</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════ LENDER ════════════ -->
+    <section id="view-lender" hidden>
+      <div class="view-title"><span class="dot"></span> Lender</div>
+
+      <div class="card">
+        <h3>Lender vault <span class="hint">loan book, repayments and seized collateral</span></h3>
+        <div class="stats">
+          <div class="stat"><div class="stat-label"><span data-asset>PYUSD</span> to lend</div><div class="stat-value" id="l-loan">—</div></div>
+          <div class="stat"><div class="stat-label"><span data-asset>PYUSD</span> quarantined</div><div class="stat-value" id="l-loanQ">—</div></div>
+          <div class="stat"><div class="stat-label">ETH available</div><div class="stat-value" id="l-eth">—</div></div>
+          <div class="stat"><div class="stat-label">ETH quarantined</div><div class="stat-value" id="l-ethQ">—</div></div>
+        </div>
+        <div class="addr" id="l-vaultAddr"></div>
+        <div id="l-quarantines" style="margin-top:12px"></div>
+        <div class="banner info">The lender can only act on its own locks. It has no transfer permission on the borrower's vault, and a liquidation can only send the locked ETH to the beneficiary address fixed when the lock was created.</div>
+      </div>
+
+      <div class="card">
+        <h3>Loan book</h3>
+        <div id="l-book"></div>
+      </div>
+
+      <div class="card">
+        <h3>Ledger <span class="hint">on-chain payouts and repayments</span></h3>
+        <div id="l-ledger"></div>
+      </div>
+
+      <div class="card">
+        <details class="settings" id="settings">
+          <summary>Risk settings</summary>
+          <div class="settings-grid">
+            <label class="field">Max initial LTV<input data-cfg="maxInitialLtv" type="number" step="0.01"></label>
+            <label class="field">Target LTV<input data-cfg="targetLtv" type="number" step="0.01"></label>
+            <label class="field">Margin call LTV<input data-cfg="marginCallLtv" type="number" step="0.01"></label>
+            <label class="field">Liquidation LTV<input data-cfg="liquidationLtv" type="number" step="0.01"></label>
+            <label class="field">Liquidation penalty (bps)<input data-cfg="liquidationPenaltyBps" type="number"></label>
+            <label class="field">APR (bps)<input data-cfg="aprBps" type="number"></label>
+            <label class="field">Grace period (s)<input data-cfg="gracePeriodSec" type="number"></label>
+            <label class="field">Risk interval (s)<input data-cfg="riskIntervalSec" type="number"></label>
+            <label class="field">Price source
+              <select data-cfg="priceSource">
+                <option value="chainlink+shock">Chainlink + shock</option>
+                <option value="chainlink">Chainlink</option>
+                <option value="manual">Manual</option>
+              </select>
+            </label>
+            <label class="check"><input type="checkbox" data-cfg="autoLiquidate"> Auto-liquidate</label>
+            <label class="check"><input type="checkbox" data-cfg="autoAcceptTopUp"> Auto-accept top-ups</label>
+            <label class="field">Borrower gas reserve (ETH)<input data-cfg="gasReserveEth" type="number" step="0.001"></label>
+          </div>
+          <div class="row"><button data-action="saveConfig">Save settings</button></div>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <aside>
+    <div class="card">
+      <h3>Risk engine <span class="hint" id="riskHint"></span></h3>
+      <div id="riskLoans"></div>
+    </div>
+    <div class="card">
+      <h3>Timeline <span class="hint">every Dfns call, with its request and response</span></h3>
+      <div class="timeline" id="timeline"></div>
+    </div>
+  </aside>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const state = { data: null, actor: ['borrower', 'lender'].includes(location.hash.slice(1)) ? location.hash.slice(1) : localGet('actor') || 'borrower', busy: new Set() }
+const OPEN = ['Active', 'MarginCall']
+
+function localGet(k) { try { return localStorage.getItem(k) } catch { return null } }
+function localSet(k, v) { try { localStorage.setItem(k, v) } catch {} }
+const $ = id => document.getElementById(id)
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+
+// ── Formatting ──────────────────────────────────────────────────────
+function units(value, decimals, digits) {
+  const v = BigInt(value || 0)
+  const neg = v < 0n
+  const abs = neg ? -v : v
+  const base = 10n ** BigInt(decimals)
+  const whole = abs / base
+  const frac = (abs % base).toString().padStart(decimals, '0').slice(0, digits)
+  return (neg ? '-' : '') + whole.toLocaleString('en-US') + (digits ? '.' + frac : '')
+}
+const fmtEth = wei => units(wei, 18, 5) + ' ETH'
+const asset = () => state.data?.config.loanAsset ?? { symbol: 'PYUSD', decimals: 6 }
+const fmtLoan = v => units(v, asset().decimals, 2) + ' ' + asset().symbol
+const fmtUsd = n => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const fmtPct = x => x === null || x === undefined ? '—' : !isFinite(x) ? '∞' : (x * 100).toFixed(1) + '%'
+const shortId = id => id ? id.replace(/^loan-/, '').slice(0, 8) : ''
+const txLink = h => h ? `<a href="https://sepolia.etherscan.io/tx/${esc(h)}" target="_blank" rel="noopener">${esc(h.slice(0, 10))}…</a>` : ''
+
+// ── API ─────────────────────────────────────────────────────────────
+async function api(method, url, body) {
+  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || res.statusText)
+  return json
+}
+
+function toast(msg, ok = false) {
+  const t = $('toast')
+  t.textContent = msg
+  t.className = ok ? 'ok' : ''
+  t.style.display = 'block'
+  clearTimeout(toast.timer)
+  toast.timer = setTimeout(() => { t.style.display = 'none' }, ok ? 3000 : 7000)
+}
+
+// Runs an action with its button disabled and a spinner, then refreshes
+async function run(key, button, label, fn) {
+  if (state.busy.has(key)) return
+  state.busy.add(key)
+  const original = button?.innerHTML
+  if (button) { button.disabled = true; button.innerHTML = `<span class="spinner"></span>${label}` }
+  try {
+    await fn()
+    toast(`${label.replace(/…$/, '')}: done`, true)
+  } catch (e) {
+    toast(e.message)
+  } finally {
+    state.busy.delete(key)
+    if (button && document.body.contains(button)) { button.disabled = false; button.innerHTML = original }
+    await refresh()
+  }
+}
+
+async function refresh() {
+  try {
+    const data = await api('GET', '/api/state')
+    const first = !state.data
+    state.data = data
+    if (first) renderTimeline(data.timeline)
+    render()
+  } catch (e) {
+    toast(`Could not load state: ${e.message}`)
+  }
+}
+
+// ── Rendering ───────────────────────────────────────────────────────
+function render() {
+  const d = state.data
+  if (!d) return
+  document.querySelectorAll('[data-asset]').forEach(el => { el.textContent = asset().symbol })
+  renderPrice(d.price)
+  renderBorrower(d)
+  renderLender(d)
+  renderRisk(d)
+  renderRequestPreview()
+}
+
+function renderPrice(p) {
+  $('price').textContent = fmtUsd(p.price)
+  $('livePrice').textContent = p.live ? fmtUsd(p.live) : '—'
+  $('priceSource').textContent = `· ${p.source}`
+  $('priceError').textContent = p.error ? 'Feed error, using last price' : ''
+  $('priceError').title = p.error || ''
+  $('shockBox').hidden = p.source !== 'chainlink+shock'
+  $('manualBox').hidden = p.source !== 'manual'
+  if (document.activeElement !== $('shock')) {
+    $('shock').value = p.shock
+    $('shockValue').textContent = '×' + Number(p.shock).toFixed(2)
+  }
+  if (document.activeElement !== $('manualPrice')) $('manualPrice').value = state.data.config.manualPriceUsd
+}
+
+function ltvBar(ltv, cfg) {
+  const pct = v => Math.min(100, Math.max(0, v * 100))
+  const cls = ltv >= cfg.liquidationLtv ? 'bad' : ltv >= cfg.marginCallLtv ? 'warn' : ''
+  const width = ltv === null || ltv === undefined ? 0 : !isFinite(ltv) ? 100 : pct(ltv)
+  return `<div class="ltv">
+    <div class="ltv-bar" style="--mc:${pct(cfg.marginCallLtv)}%; --liq:${pct(cfg.liquidationLtv)}%">
+      <div class="ltv-fill ${cls}" style="width:${width}%"></div>
+      <div class="ltv-mark" style="left:${pct(cfg.maxInitialLtv)}%" title="Max initial LTV"></div>
+      <div class="ltv-mark" style="left:${pct(cfg.marginCallLtv)}%" title="Margin call"></div>
+      <div class="ltv-mark" style="left:${pct(cfg.liquidationLtv)}%" title="Liquidation"></div>
+    </div>
+  </div>`
+}
+
+function quarantineList(party, items) {
+  const amount = q => q.amount === null ? '' : q.asset === 'ETH' ? fmtEth(q.amount) : q.asset === asset().symbol ? fmtLoan(q.amount) : `${q.amount} ${esc(q.asset)}`
+  return items.length
+    ? `<div class="stat-label" style="margin-bottom:6px">Waiting in quarantine</div>` + items.map(q => `
+      <div class="row" style="justify-content:space-between; align-items:center; margin-top:4px">
+        <span class="mono" style="font-size:11px; color:var(--muted)"><b>${amount(q)}</b> · ${txLink(q.transactionHash)} · ${new Date(q.dateCreated).toLocaleTimeString()}</span>
+        <button data-action="release" data-party="${party}" data-id="${esc(q.id)}">Accept</button>
+      </div>`).join('')
+    : `<div class="empty">Nothing waiting in quarantine.</div>`
+}
+
+function renderBorrower(d) {
+  if (!d.vaults) {
+    $('b-vaultAddr').innerHTML = `<span style="color:var(--bad)">Dfns unavailable: ${esc(d.dfnsError)}</span>`
+    $('b-loans').innerHTML = d.loans.map(l => borrowerLoan(l, d.config)).join('') || `<div class="empty">No loans yet.</div>`
+    return
+  }
+  const v = d.vaults.borrower
+  $('b-available').textContent = fmtEth(v.eth.Available)
+  $('b-quarantined').textContent = fmtEth(v.eth.Quarantined)
+  $('b-locked').textContent = fmtEth(v.eth.Locked)
+  $('b-loan').textContent = fmtLoan(v.loanAsset.Available)
+  $('b-vaultAddr').textContent = `Vault ${v.id} · deposit address ${v.address}`
+  $('b-quarantines').innerHTML = quarantineList('borrower', v.quarantines)
+
+  const loans = d.loans.filter(l => l.status !== 'Rejected' || Date.now() - Date.parse(l.createdAt) < 3600e3)
+  // Keep what the borrower typed across live redraws
+  const typed = {}
+  $('b-loans').querySelectorAll('input[id]').forEach(el => { typed[el.id] = el.value })
+  $('b-loans').innerHTML = loans.length ? loans.map(l => borrowerLoan(l, d.config)).join('') : `<div class="empty">No loans yet.</div>`
+  Object.entries(typed).forEach(([id, v]) => { if ($(id)) $(id).value = v })
+}
+
+function loanStats(l) {
+  return `<div class="stats">
+    <div class="stat"><div class="stat-label">Collateral</div><div class="stat-value">${fmtEth(l.lockedWei ?? l.collateralWei)}</div></div>
+    <div class="stat"><div class="stat-label">Value</div><div class="stat-value">${fmtLoan(l.collateralValue)}</div></div>
+    <div class="stat"><div class="stat-label">${l.status === 'Requested' ? 'Principal' : 'Debt'}</div><div class="stat-value">${fmtLoan(l.status === 'Requested' ? l.principal : l.debt)}</div></div>
+    <div class="stat"><div class="stat-label">LTV</div><div class="stat-value">${fmtPct(l.ltv)}</div></div>
+  </div>`
+}
+
+function banners(l, cfg) {
+  let html = ''
+  if (l.busy) html += `<div class="banner info"><span class="spinner"></span>${esc(l.busy)}…</div>`
+  if (l.status === 'MarginCall') {
+    const left = l.graceEndsAt ? Math.max(0, Math.round((l.graceEndsAt - Date.now()) / 1000)) : null
+    html += `<div class="banner warn"><b>Margin call.</b> LTV is above ${fmtPct(cfg.marginCallLtv)}. Add <b>${fmtEth(l.topUpNeededWei)}</b> to get back to ${fmtPct(cfg.targetLtv)}, or repay part of the debt.
+      ${left !== null ? `Liquidation in <b data-countdown="${l.graceEndsAt}">${left}s</b> if nothing changes.` : ''}</div>`
+  }
+  if (l.liquidationDue) html += `<div class="banner bad"><b>Liquidation due.</b> Waiting for the lender to liquidate.</div>`
+  if (l.pendingTopUpWei) html += `<div class="banner info">Top-up of ${fmtEth(l.pendingTopUpWei)} offered, waiting for the lender to raise the lock.</div>`
+  if (l.status === 'Liquidating') html += `<div class="banner bad"><span class="spinner"></span>Liquidating: sending ${fmtEth(l.liquidation.amountWei)} to the lender. The rest returns to Available once confirmed.</div>`
+  if (l.status === 'Liquidated' && l.liquidation) html += `<div class="banner bad">Liquidated at ${fmtUsd(l.liquidation.priceUsd)}: ${fmtEth(l.liquidation.amountWei)} seized to cover ${fmtLoan(l.liquidation.debt)} plus penalty. ${txLink(l.liquidation.txHash)}</div>`
+  if (l.lastError && !l.busy) html += `<div class="banner bad">Last error: ${esc(l.lastError)}</div>`
+  return html
+}
+
+function borrowerLoan(l, cfg) {
+  const open = OPEN.includes(l.status)
+  return `<div class="loan">
+    <div class="loan-head"><span class="pill ${l.status}">${l.status}</span><span class="id">${esc(l.id)}</span></div>
+    ${loanStats(l)}
+    ${open || l.status === 'Requested' ? ltvBar(l.ltv, cfg) : ''}
+    ${banners(l, cfg)}
+    ${open && !l.busy ? `
+      <div class="row">
+        <label class="field">Add collateral (ETH)<input id="topup-${l.id}" value="${l.topUpNeededWei !== '0' ? units(l.topUpNeededWei, 18, 5).replace(/,/g, '') : '0.005'}"></label>
+        <button data-action="topup" data-id="${l.id}" ${l.pendingTopUpWei ? 'disabled' : ''}>Top up</button>
+        <label class="field">Repay (${asset().symbol})<input id="repay-${l.id}" value="${Math.min(5, Number(units(l.debt, asset().decimals, 2).replace(/,/g, '')))}"></label>
+        <button data-action="repay" data-id="${l.id}">Repay</button>
+        <button class="ghost" data-action="repayFull" data-id="${l.id}">Repay in full</button>
+      </div>` : ''}
+  </div>`
+}
+
+function renderLender(d) {
+  const v = d.vaults?.lender
+  $('l-loan').textContent = v ? fmtLoan(v.loanAsset.Available) : '—'
+  $('l-loanQ').textContent = v ? fmtLoan(v.loanAsset.Quarantined) : '—'
+  $('l-eth').textContent = v ? fmtEth(v.eth.Available) : '—'
+  $('l-ethQ').textContent = v ? fmtEth(v.eth.Quarantined) : '—'
+  $('l-vaultAddr').textContent = v ? `Vault ${v.id} (lock beneficiary) · ${v.address}` : ''
+  $('l-quarantines').innerHTML = v ? quarantineList('lender', v.quarantines) : ''
+
+  $('l-book').innerHTML = d.loans.length ? `<table>
+    <tr><th>Loan</th><th>Status</th><th>Collateral</th><th>Debt</th><th>LTV</th><th></th></tr>
+    ${d.loans.map(l => `<tr>
+      <td class="mono" title="${esc(l.id)}">${shortId(l.id)}</td>
+      <td><span class="pill ${l.status}">${l.status}</span>${l.busy ? `<div class="empty"><span class="spinner"></span>${esc(l.busy)}</div>` : ''}</td>
+      <td>${fmtEth(l.lockedWei ?? l.collateralWei)}</td>
+      <td>${fmtLoan(l.status === 'Requested' ? l.principal : l.debt)}</td>
+      <td>${fmtPct(l.ltv)}${OPEN.includes(l.status) || l.status === 'Requested' ? ltvBar(l.ltv, d.config) : ''}</td>
+      <td><div class="actions">${lenderActions(l)}</div></td>
+    </tr>`).join('')}
+  </table>` : `<div class="empty">No loan requests yet. Switch to the borrower to request one.</div>`
+
+  const rows = d.loans.flatMap(l => [
+    ...l.payments.map(p => ({ ...p, loanId: l.id })),
+    ...(l.liquidation?.txHash ? [{ kind: 'liquidation', amount: null, wei: l.liquidation.amountWei, txHash: l.liquidation.txHash, at: l.closedAt, loanId: l.id }] : []),
+  ]).sort((a, b) => String(b.at).localeCompare(String(a.at)))
+  $('l-ledger').innerHTML = rows.length ? `<table>
+    <tr><th>When</th><th>Loan</th><th>Kind</th><th>Amount</th><th>Tx</th></tr>
+    ${rows.map(r => `<tr>
+      <td>${r.at ? new Date(r.at).toLocaleTimeString() : ''}</td>
+      <td class="mono">${shortId(r.loanId)}</td>
+      <td>${r.kind}</td>
+      <td>${r.amount !== null ? (r.kind === 'payout' ? '−' : '+') + fmtLoan(r.amount) : '+' + fmtEth(r.wei)}</td>
+      <td>${txLink(r.txHash)}</td>
+    </tr>`).join('')}
+  </table>` : `<div class="empty">No transfers yet.</div>`
+
+  const settings = $('settings')
+  if (!settings.contains(document.activeElement)) {
+    settings.querySelectorAll('[data-cfg]').forEach(el => {
+      const v = d.config[el.dataset.cfg]
+      if (el.type === 'checkbox') el.checked = !!v
+      else el.value = v
+    })
+  }
+}
+
+function lenderActions(l) {
+  if (l.busy) return ''
+  const b = (action, label, cls = '') => `<button class="${cls}" data-action="${action}" data-id="${l.id}">${label}</button>`
+  if (l.status === 'Requested') return b('approve', 'Approve') + b('reject', 'Reject', 'ghost')
+  if (!OPEN.includes(l.status)) return ''
+  return (l.pendingTopUpWei ? b('acceptTopup', 'Accept top-up') : '')
+    + (l.status === 'MarginCall' || l.liquidationDue ? b('liquidate', 'Liquidate', 'danger') : '')
+}
+
+function renderRisk(d) {
+  const cfg = d.config
+  $('riskHint').textContent = `every ${cfg.riskIntervalSec}s · margin call ${fmtPct(cfg.marginCallLtv)} · liquidation ${fmtPct(cfg.liquidationLtv)} · ${cfg.autoLiquidate ? 'auto' : 'manual'}`
+  const open = d.loans.filter(l => OPEN.includes(l.status) || l.status === 'Liquidating')
+  $('riskLoans').innerHTML = open.length ? open.map(l => `
+    <div class="risk-loan">
+      <span class="id" title="${esc(l.id)}">${shortId(l.id)} <span class="pill ${l.status}" style="font-size:9px">${l.status === 'MarginCall' ? 'MC' : l.status}</span></span>
+      ${ltvBar(l.ltv, cfg)}
+      <span class="val">${fmtPct(l.ltv)}</span>
+    </div>`).join('') + `<div class="ltv-legend"><span>0%</span><span>markers: max initial · margin call · liquidation</span><span>100%</span></div>`
+    : `<div class="empty">No open loans to monitor.</div>`
+}
+
+function renderRequestPreview() {
+  const d = state.data
+  if (!d) return
+  const eth = parseFloat($('reqCollateral').value) || 0
+  const principal = parseFloat($('reqPrincipal').value) || 0
+  const value = eth * d.price.price
+  const ltv = value ? principal / value : 0
+  const max = value * d.config.maxInitialLtv
+  const color = ltv > d.config.maxInitialLtv ? 'var(--bad)' : 'var(--ok)'
+  $('reqPreview').innerHTML = `Collateral value <b>${fmtUsd(value)}</b> · LTV <b style="color:${color}">${fmtPct(ltv)}</b> · max principal at ${fmtPct(d.config.maxInitialLtv)}: <b>${max.toFixed(2)} ${asset().symbol}</b> · APR ${(d.config.aprBps / 100).toFixed(2)}%`
+}
+
+// ── Timeline ────────────────────────────────────────────────────────
+function timelineEntry(e) {
+  const hasDetail = e.request !== undefined || e.response !== undefined
+  return `<div class="ev ${e.actor} ${e.kind}">
+    <div class="ev-head">
+      <span class="ev-actor">${e.actor}</span>
+      <span class="ev-title">${esc(e.title)}${e.loanId ? ` <span style="color:var(--dim)">· ${shortId(e.loanId)}</span>` : ''} ${txLink(e.txHash)}</span>
+      <span class="ev-time">${new Date(e.at).toLocaleTimeString()}</span>
+    </div>
+    ${hasDetail ? `<details><summary>request / response</summary>
+      ${e.request !== undefined ? `<pre>${esc(JSON.stringify(e.request, null, 2))}</pre>` : ''}
+      ${e.response !== undefined ? `<pre>${esc(JSON.stringify(e.response, null, 2))}</pre>` : ''}
+    </details>` : ''}
+  </div>`
+}
+
+function renderTimeline(entries) {
+  $('timeline').innerHTML = entries.slice().reverse().map(timelineEntry).join('') || `<div class="empty">Nothing yet.</div>`
+}
+
+function pushTimeline(e) {
+  const tl = $('timeline')
+  if (tl.querySelector('.empty')) tl.innerHTML = ''
+  tl.insertAdjacentHTML('afterbegin', timelineEntry(e))
+  while (tl.children.length > 150) tl.lastElementChild.remove()
+}
+
+// ── Live updates ────────────────────────────────────────────────────
+function connect() {
+  const es = new EventSource('/api/events')
+  es.addEventListener('timeline', ev => {
+    const e = JSON.parse(ev.data)
+    pushTimeline(e)
+    if (e.kind === 'transition') refresh()
+  })
+  es.addEventListener('tick', ev => {
+    if (!state.data) return
+    const t = JSON.parse(ev.data)
+    state.data.price = t.price
+    state.data.loans = t.loans
+    // Don't redraw loan forms while the user is typing in them
+    const typing = document.activeElement?.tagName === 'INPUT' && document.activeElement.id.match(/^(topup|repay)-/)
+    renderPrice(t.price)
+    renderRisk(state.data)
+    if (!typing) { renderBorrower(state.data); renderLender(state.data) }
+    renderRequestPreview()
+  })
+  es.onerror = () => { es.close(); setTimeout(connect, 3000) }
+}
+
+setInterval(() => {
+  document.querySelectorAll('[data-countdown]').forEach(el => {
+    el.textContent = Math.max(0, Math.round((Number(el.dataset.countdown) - Date.now()) / 1000)) + 's'
+  })
+}, 1000)
+
+// ── Actions ─────────────────────────────────────────────────────────
+function setActor(actor) {
+  state.actor = actor
+  localSet('actor', actor)
+  document.body.classList.toggle('lender', actor === 'lender')
+  $('view-borrower').hidden = actor !== 'borrower'
+  $('view-lender').hidden = actor !== 'lender'
+  document.querySelectorAll('#actorToggle button').forEach(b => b.classList.toggle('on', b.dataset.actor === actor))
+}
+
+window.addEventListener('hashchange', () => {
+  const a = location.hash.slice(1)
+  if (a === 'borrower' || a === 'lender') setActor(a)
+})
+$('actorToggle').addEventListener('click', e => { if (e.target.dataset.actor) setActor(e.target.dataset.actor) })
+$('reqCollateral').addEventListener('input', renderRequestPreview)
+$('reqPrincipal').addEventListener('input', renderRequestPreview)
+
+$('shock').addEventListener('input', e => { $('shockValue').textContent = '×' + Number(e.target.value).toFixed(2) })
+$('shock').addEventListener('change', async e => {
+  try { state.data.price = await api('PUT', '/api/price/override', { shock: Number(e.target.value) }); render() } catch (err) { toast(err.message) }
+})
+$('manualPrice').addEventListener('change', async e => {
+  try { state.data.price = await api('PUT', '/api/price/override', { manualPriceUsd: Number(e.target.value) }); render() } catch (err) { toast(err.message) }
+})
+
+const actions = {
+  release: btn => run(`release-${btn.dataset.id}`, btn, 'Accepting…', () => api('POST', `/api/${btn.dataset.party}/quarantines/${btn.dataset.id}/release`)),
+  request: btn => run('request', btn, 'Requesting…', () => api('POST', '/api/borrower/loans', { collateralEth: $('reqCollateral').value.trim(), principal: $('reqPrincipal').value.trim() })),
+  topup: btn => run(`loan-${btn.dataset.id}`, btn, 'Topping up…', () => api('POST', `/api/borrower/loans/${btn.dataset.id}/topup`, { amountEth: $(`topup-${btn.dataset.id}`).value.trim() })),
+  repay: btn => run(`loan-${btn.dataset.id}`, btn, 'Repaying…', () => api('POST', `/api/borrower/loans/${btn.dataset.id}/repay`, { amount: $(`repay-${btn.dataset.id}`).value.trim() })),
+  repayFull: btn => run(`loan-${btn.dataset.id}`, btn, 'Repaying in full…', () => api('POST', `/api/borrower/loans/${btn.dataset.id}/repay`, { full: true })),
+  withdraw: btn => run('withdraw', btn, 'Withdrawing…', () => api('POST', '/api/borrower/withdraw', { amountEth: $('withdrawAmount').value.trim(), to: $('withdrawTo').value.trim() })),
+  approve: btn => run(`loan-${btn.dataset.id}`, btn, 'Approving…', () => api('POST', `/api/lender/loans/${btn.dataset.id}/approve`)),
+  reject: btn => run(`loan-${btn.dataset.id}`, btn, 'Rejecting…', () => api('POST', `/api/lender/loans/${btn.dataset.id}/reject`)),
+  acceptTopup: btn => run(`loan-${btn.dataset.id}`, btn, 'Raising lock…', () => api('POST', `/api/lender/loans/${btn.dataset.id}/accept-topup`)),
+  liquidate: btn => {
+    if (!confirm('Liquidate this loan? The lock transfer sends the seized ETH to the lender vault.')) return
+    run(`loan-${btn.dataset.id}`, btn, 'Liquidating…', () => api('POST', `/api/lender/loans/${btn.dataset.id}/liquidate`))
+  },
+  saveConfig: btn => run('config', btn, 'Saving…', () => {
+    const patch = {}
+    $('settings').querySelectorAll('[data-cfg]').forEach(el => {
+      patch[el.dataset.cfg] = el.type === 'checkbox' ? el.checked : el.tagName === 'SELECT' ? el.value : Number(el.value)
+    })
+    return api('PUT', '/api/config', patch)
+  }),
+}
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('button[data-action]')
+  if (btn && !btn.disabled) actions[btn.dataset.action]?.(btn)
+})
+
+setActor(state.actor)
+refresh()
+connect()
+setInterval(refresh, 15000)
+</script>
+</body>
+</html>

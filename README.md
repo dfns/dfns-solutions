@@ -50,6 +50,14 @@ Tokenized corporate bond lifecycle on Ethereum — investors subscribe with stab
 
 [Get started &rarr;](./bond-issuance/)
 
+### Collateral Lending
+
+Crypto-backed loans on Ethereum Sepolia using Dfns Vaults and Locks — a borrower pledges ETH held in their own vault, the lender locks it and pays out PYUSD, and a risk engine watches the LTV to raise margin calls and liquidate by transferring the lock. Includes a web UI with Borrower/Lender views and a live timeline of every Dfns call.
+
+**Business use case:** Lenders and prime brokers that want to extend credit against digital assets while the collateral stays in the borrower's custody, with on-chain settlement of the loan in stablecoins.
+
+[Get started &rarr;](./collateral/)
+
 ### Bank Custody Platform
 
 Full-stack web application where crypto wallets sit alongside traditional fiat accounts — same look, same feel. Dfns powers the crypto side invisibly; customers never know it exists. Includes family delegation (parents share wallet access with kids, with per-person transfer limits) and a bank employee approval workflow.
