@@ -1,0 +1,25 @@
+{
+  "name": "collateral",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "setup": "npx tsx scripts/setup.ts",
+    "fund:buffer": "npx tsx scripts/fund-buffer.ts",
+    "start": "node --import tsx src/server.ts",
+    "test": "node --import tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@dfns/sdk": "^0.8.31",
+    "@dfns/sdk-keysigner": "^0.8.31",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "viem": "^2.57.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.19.11",
+    "tsx": "^4.23.15",
+    "typescript": "~5.8.0"
+  }
+}

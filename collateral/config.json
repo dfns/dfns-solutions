@@ -1,0 +1,24 @@
+{
+  "network": "EthereumSepolia",
+  "collateralTid": "native:eth",
+  "loanAsset": {
+    "symbol": "PYUSD",
+    "contract": "",
+    "decimals": 6
+  },
+  "borrowerPyusdBuffer": 50,
+  "gasReserveEth": 0.002,
+  "maxInitialLtv": 0.5,
+  "marginCallLtv": 0.7,
+  "targetLtv": 0.5,
+  "liquidationLtv": 0.85,
+  "liquidationPenaltyBps": 500,
+  "aprBps": 800,
+  "gracePeriodSec": 300,
+  "riskIntervalSec": 5,
+  "priceSource": "chainlink+shock",
+  "chainlinkFeed": "0x694AA1769357215DE4FAC081bf1f309aDC325306",
+  "manualPriceUsd": 3000,
+  "autoLiquidate": true,
+  "autoAcceptTopUp": true
+}
