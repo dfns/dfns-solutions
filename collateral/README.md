@@ -214,16 +214,12 @@ npm test          # LTV, interest, seizure and risk-transition math (node:test)
 npm run typecheck
 ```
 
-## Things to know
+## UI Views
 
-- **No fee sponsor.** Vault transfers and lock transfers take no `feeSponsorId` in SDK 0.8.31, so each vault pays its own gas. A liquidation's gas comes out of the borrower vault's Available ETH, which is why `gasReserveEth` is never pledged.
-- **The PYUSD token id is `erc20:<contract in lowercase>`.** Balances are matched case-insensitively. If Dfns rejects the `tid` on a vault transfer, check the format it reports in `listVaultBalances`.
-- **The SDK doesn't expose the vaults client yet.** SDK 0.8.31 ships `VaultsClient` but not `DfnsApiClient.vaults`, so [`src/dfns.ts`](./src/dfns.ts) builds it directly with the same credentials.
-- **Locks have no expiry.** A lock lives until its owner releases or transfers it. Loan maturity is handled by this server, not by Dfns.
-- **What the lock doesn't enforce.** Dfns only fixes where seized ETH can go. The rule "seize only debt + penalty, only during a margin call" is enforced by this server. To enforce it on Dfns as well, add an approval policy on lock transfers with a third-party approver.
-- **Opening a loan takes two transactions:** the lock, then the payout. If the payout fails, the server releases the lock. Retrying uses a new lock `externalId`, because a vault never accepts the same `externalId` twice.
-- **The demo is single-process.** It uses a JSON file for storage and polls instead of using webhooks. Operations in flight when the server stops are not resumed, except liquidations, whose confirmation the risk engine picks up again.
+### Borrower's view
 
-## License
+![Borrower](./images/borrower-view.png)
 
-MIT
+### Lenders' view
+
+![Lender](./images/lender-view.png)
