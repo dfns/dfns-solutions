@@ -2,7 +2,7 @@ import http from 'http'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import express, { type Request, type Response, type NextFunction } from 'express'
-import { parseEther, parseUnits } from 'viem'
+import { isAddress, parseEther, parseUnits } from 'viem'
 import { requireEnv, env } from './env.js'
 import { errorDetail } from './dfns.js'
 import { config, updateConfig } from './config.js'
@@ -105,7 +105,7 @@ app.post('/api/borrower/loans/:id/repay', route(async req => {
 
 app.post('/api/borrower/withdraw', route(async req => {
     const to = req.body.to
-    if (typeof to !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(to)) throw Object.assign(new Error('Destination must be an 0x address'), { status: 400 })
+    if (!isAddress(to, { strict: false })) throw Object.assign(new Error('Destination must be an 0x address'), { status: 400 })
     const result = await withdrawFromVault(eth(req.body.amountEth), to)
     invalidate()
     return { transferId: result.id, txHash: result.txHash }
