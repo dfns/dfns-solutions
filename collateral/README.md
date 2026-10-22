@@ -85,7 +85,7 @@ With `autoLiquidate` off, the engine flags the loan as *liquidation due* and wai
 
 ### 1. Prerequisites
 
-- Node.js v22+
+- Node.js v22+ (latest patch release)
 - A Dfns org with **Vaults** enabled
 - Two **service accounts** in that org, one for the borrower and one for the lender. They must be separate identities, because only the lock's creator can act on it.
 

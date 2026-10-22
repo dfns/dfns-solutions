@@ -56,7 +56,7 @@ One gap has no Dfns equivalent: **Dfns has no API that returns a deployment's re
 
 ### 1. Prerequisites
 
-- Node.js v22+
+- Node.js v22+ (latest patch release)
 - A [Dfns](https://www.dfns.co/) account with API credentials
 - Two Dfns wallets on Ethereum Sepolia (one for the issuer, one for the investor)
 

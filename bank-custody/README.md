@@ -44,7 +44,7 @@ The backend is a **pure REST API** with JWT auth — any client (web, mobile, CL
 ### 1. Prerequisites
 
 - Python 3.10+
-- Node.js 18+
+- Node.js v22+ (latest patch release)
 - A [Dfns](https://www.dfns.co/) account with a service account
 - An [Auth0](https://auth0.com/) tenant
 
