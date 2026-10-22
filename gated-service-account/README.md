@@ -50,7 +50,7 @@ Nothing downstream of the constructor knows the gate exists.
 
 - A DFNS **development** organization
 - An admin identity that can create keys, wallets, policies, and permissions, and vote on approvals
-- Node.js v22.18+ (runs TypeScript natively via type stripping)
+- Node.js v22+, latest patch release (runs TypeScript natively via type stripping)
 
 ## Setup
 

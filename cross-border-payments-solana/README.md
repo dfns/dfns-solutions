@@ -54,7 +54,7 @@ Sender  |-- execute_payment ---------->|                         |
 
 ### 1. Prerequisites
 
-- Node.js v18+
+- Node.js v22+ (latest patch release)
 - Rust / Cargo (for building the Anchor program)
 - A [Dfns](https://dfns.io) account with API credentials
 

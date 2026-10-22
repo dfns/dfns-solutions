@@ -47,7 +47,7 @@ Attester (Dfns Wallet)          SchemaRegistry              EAS
 
 ### 1. Prerequisites
 
-- Node.js v22+
+- Node.js v22+ (latest patch release)
 - A [Dfns](https://www.dfns.co/) account with API credentials
 - A Dfns wallet on Ethereum Sepolia, funded with a small amount of Sepolia ETH for gas (the "issuer" wallet from `bond-issuance` works fine)
 

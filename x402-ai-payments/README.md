@@ -65,7 +65,7 @@ For production, pair the in-process check with a native **Dfns Policy** on `Wall
 
 ### 1. Prerequisites
 
-- Node.js v22+
+- Node.js v22+ (latest patch release)
 - A [Dfns](https://www.dfns.co/) account with a **service account** holding:
   - `Wallets:GenerateSignature` on the customer wallet
   - `Wallets:BroadcastTransaction` on the merchant wallet

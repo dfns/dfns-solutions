@@ -50,7 +50,7 @@ Anything that fails a check is denied with a reason string that lands on the app
 
 ### 1. Prerequisites
 
-- Node.js v22+
+- Node.js v22+ (latest patch release)
 - A [Dfns](https://www.dfns.co/) account with API credentials
 - A Dfns wallet on Ethereum Sepolia (the **Maker** wallet)
 - A Dfns **Service Account** (the **Checker**) with its own credentials
