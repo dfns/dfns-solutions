@@ -84,13 +84,19 @@ Every balance change is an entry in the vault's append-only ledger. The app read
 1. Is there an environment (a SaaS org configured by Dfns, or an on-prem/dev one) where the gate can be enabled for real? Not blocking: the recipe uses the simulator; a real run would only be recorded for sales demos.
 2. Which screening provider works on testnet vault deposits, and how is it wired to the release-quarantine policy? Per the docs, only Chainalysis is wired to quarantine release (`ChainalysisQuarantineScreening`), and it screens mainnets only, so the setup script falls back to one manual approval on Sepolia.
 3. The gate only receives `txHash`, not the decoded transaction. Should the handler look up the pending transfer (by hash) through the Dfns API to apply business rules?
-4. Approvals: three users with passkeys, or service accounts for the demo?
+4. Approvals: which three org users act as approvers? Each needs `Policies:Evaluations:Vote`; nobody can approve their own request, and service accounts can't approve, so it takes real people.
 5. Network: EVM testnet (Sepolia or Hoodi) to start; Bitcoin and Solana later?
 
 ## Plan
 
-1. Setup script: vault, address, tags, policies (release-quarantine with screening, 2-of-3 withdrawal approval).
-2. Backend (TypeScript, like [Collateral](../collateral/)): deposits and quarantines, withdrawals, approvals, audit export.
-3. Validation Gate handler with HMAC verification and simple rules (amount cap, allowlist, business hours), plus a signer simulator. Built standalone first, so it plugs into a real signer unchanged; if an environment allows it, record one real end-to-end run.
-4. Web UI: Operations, Approvers and Audit views, with a live timeline of every Dfns call.
-5. Tutorial page on docs.dfns.co.
+1. Setup script: vault, address, tags, policies (release-quarantine with manual review on testnet, 2-of-3 withdrawal approval). *Done.*
+2. First deposit: send Sepolia ETH from an ordinary Dfns wallet to the vault address. It lands as Quarantined and exercises the release policy end to end.
+3. Backend (TypeScript, like [Collateral](../collateral/)): deposits and quarantines, withdrawals, approvals, audit export. Track each operation's status from webhooks rather than polling: `Pending` (awaiting approvals) → `Executing` → `Broadcasted` → `Confirmed`, plus `Failed` / `Rejected`, and quarantine and release for deposits.
+4. Validation Gate handler with HMAC verification and simple rules (amount cap, allowlist, business hours), plus a signer simulator. Take the request format, headers and responses from Dfns's own gate code (`validation-gate-core` and `validation-gate-test-utils` in `dfnsco/coresign`), so the handler plugs into a real signer unchanged. If an environment allows it, record one real end-to-end run.
+5. Web UI: Operations, Approvers and Audit views, with a live status timeline per operation (from the webhooks above) and the raw Dfns calls behind it.
+6. Tutorial page on docs.dfns.co.
+
+## Possible extensions
+
+- **Travel rule:** on a withdrawal to another regulated institution, show originator and beneficiary data being exchanged (e.g. Notabene) before the transfer goes out. Depends on how Dfns integrates it.
+- **HSM keystore:** the same flow on an HSM-backed keystore instead of MPC, the setup on-prem banks run. Only the keystore behind the vault changes.
