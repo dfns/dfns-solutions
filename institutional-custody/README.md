@@ -76,7 +76,7 @@ Every balance change is an entry in the vault's append-only ledger. The app read
 | Vaults, policies, approvals | Dfns API (testnet) | Same |
 | Screening | KYT provider on testnet, or a stub that scores known addresses | KYT provider |
 | Validation Gate handler | Included here: an HTTP service that verifies the HMAC and applies rules | Hosted by the institution |
-| Validation Gate enforcement | **Only with a self-hosted signer** (MPC or HSM) configured with `--validation-gate-url`. A hosted SaaS org can't enforce it. | The institution's signer |
+| Validation Gate enforcement | Documented for self-hosted signers, configured with `--validation-gate-url` on the signer. Whether a hosted SaaS org can use it isn't documented: to confirm. | The institution's signer |
 
 ## Open questions
 
