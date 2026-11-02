@@ -19,13 +19,19 @@ export interface CustodyState {
     vault?: { id: string; address: string; walletId: string }
     balances: Balances
     quarantines: { id: string; status: string; amount?: string; tid?: string; txHash?: string; senders?: string[]; dateCreated?: string }[]
-    withdrawals: { transferId: string; status: string; amount: string; to?: string; txHash?: string; approvalId?: string; requester?: string; dateRequested?: string; reason?: string }[]
+    // Recent deposits, released ones included, so a release stays visible
+    deposits: { quarantineId: string; status: string; amount: string; tid: string; txHash: string; senders: string[]; timestamp: string; dateReleased?: string }[]
+    withdrawals: {
+        transferId: string; status: string; amount: string; to?: string; txHash?: string; approvalId?: string; requester?: string; reason?: string
+        // When each stage was reached, from the transfer request itself
+        dateRequested?: string; datePolicyResolved?: string; dateBroadcasted?: string; dateConfirmed?: string
+    }[]
     approvals: { id: string; activity: string; ref?: string; summary: string; dateCreated?: string; decisions: { userId: string; value: string }[] }[]
     // A failing source (e.g. a missing permission) doesn't hide the others
     errors: Record<string, string>
 }
 
-export const state: CustodyState = { balances: {}, quarantines: [], withdrawals: [], approvals: [], errors: {} }
+export const state: CustodyState = { balances: {}, quarantines: [], deposits: [], withdrawals: [], approvals: [], errors: {} }
 
 // Last status seen per object, so each change is recorded once. Empty until
 // the first poll, which only seeds it: the timeline starts at startup.
@@ -120,8 +126,24 @@ function withdrawals(items: VaultHistoryItem[]): CustodyState['withdrawals'] {
         txHash: i.transferRequest.txHash,
         approvalId: i.transferRequest.approvalId,
         requester: i.transferRequest.requester.userId,
-        dateRequested: i.transferRequest.dateRequested,
         reason: i.transferRequest.reason,
+        dateRequested: i.transferRequest.dateRequested,
+        datePolicyResolved: i.transferRequest.datePolicyResolved,
+        dateBroadcasted: i.transferRequest.dateBroadcasted,
+        dateConfirmed: i.transferRequest.dateConfirmed,
+    }])
+}
+
+function deposits(items: VaultHistoryItem[]): CustodyState['deposits'] {
+    return items.flatMap(i => i.kind !== 'IncomingTransfer' ? [] : [{
+        quarantineId: i.quarantine.id,
+        status: i.status,
+        amount: i.amount,
+        tid: i.tid,
+        txHash: i.incomingTransfer.txHash,
+        senders: i.incomingTransfer.senders,
+        timestamp: i.timestamp,
+        dateReleased: i.quarantine.dateReleased,
     }])
 }
 
@@ -170,7 +192,10 @@ async function poll() {
         return fallback
     }
     state.balances = take('balances', balResult, state.balances)
-    if (historyResult.status === 'fulfilled') state.withdrawals = withdrawals(items)
+    if (historyResult.status === 'fulfilled') {
+        state.withdrawals = withdrawals(items)
+        state.deposits = deposits(items)
+    }
     else take('history', historyResult, undefined)
     state.quarantines = take('quarantines', qResult, state.quarantines)
     state.approvals = take('approvals', aResult, state.approvals)

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Institutional Custody · DFNS</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="mark">DFNS</span> Institutional Custody</div>
+  <div class="top-right">
+    <span id="live" class="live" title="Last update from the backend">connecting…</span>
+    <button id="theme" class="ghost" type="button" aria-label="Switch light or dark theme">◐</button>
+  </div>
+</header>
+
+<div id="banner" class="banner" hidden></div>
+
+<section class="rule">
+  <p class="eyebrow">The rule that holds throughout</p>
+  <p class="rule-text">A key signs only after <b>policy</b>, <b>approval</b> and the institution's own <b>Validation Gate</b> have all said yes, and every step leaves an <b>audit record</b>.</p>
+</section>
+
+<nav class="stepper" id="stepper" aria-label="Stages"></nav>
+
+<main id="stages">
+
+  <section class="stage" data-title="The vault and its controls">
+    <p class="lede">Client assets sit in a DFNS vault: one balance sheet with an address per network. Controls are attached before any money arrives. Deposits wait in quarantine until someone releases them, and withdrawals need an approval. The institution's Validation Gate then gets a last veto before any key signs.</p>
+    <div class="panel" id="p-controls"></div>
+    <details class="raw"><summary>What happened in DFNS</summary><pre id="r-controls"></pre></details>
+  </section>
+
+  <section class="stage" data-title="Deposit and quarantine">
+    <p class="lede">An incoming transfer never lands as spendable. DFNS books it as <b>Quarantined</b>. Releasing it is itself an operation under policy: it is requested with a reason, a second person approves it, and only then do the funds become Available. Send a little Sepolia ETH to the vault address to see one arrive.</p>
+    <div class="panel" id="p-deposits"></div>
+    <details class="raw"><summary>What happened in DFNS</summary><pre id="r-deposits"></pre></details>
+  </section>
+
+  <section class="stage" data-title="Safekeeping">
+    <p class="lede">The vault keeps a ledger, not just a balance. Every amount sits in exactly one state: Available to spend, Quarantined pending review, Locked for an obligation, or Outgoing while a transfer settles. Operations can see what is truly theirs to move.</p>
+    <div class="panel" id="p-balances"></div>
+    <details class="raw"><summary>What happened in DFNS</summary><pre id="r-balances"></pre></details>
+  </section>
+
+  <section class="stage" data-title="Withdrawal and approval">
+    <p class="lede">A withdrawal is a request, not a transaction. DFNS reserves the amount and holds the request for approval: the requester can never approve their own. Here the checker, a service account that can only read and vote, approves small transfers to known addresses on its own. Anything else waits for a person.</p>
+    <div class="panel" id="p-withdraw"></div>
+    <details class="raw"><summary>What happened in DFNS</summary><pre id="r-withdraw"></pre></details>
+  </section>
+
+  <section class="stage" data-title="The Validation Gate">
+    <p class="lede">Before the key signs, the signer calls the institution's own endpoint with what it is about to sign: amount, destination and initiator, HMAC-signed. Anything other than a 200 stops the signature. The gate runs on the institution's side, so it holds even if everything upstream were bypassed.</p>
+    <div class="panel" id="p-gate"></div>
+    <details class="raw"><summary>What happened in DFNS</summary><pre id="r-gate"></pre></details>
+  </section>
+
+  <section class="stage" data-title="Broadcast and confirmation">
+    <p class="lede">Once approved, the key signs and DFNS broadcasts the transaction, then follows it until the chain confirms it. Each withdrawal carries its own timeline, with the moment it reached every state.</p>
+    <div class="panel" id="p-broadcast"></div>
+    <details class="raw"><summary>What happened in DFNS</summary><pre id="r-broadcast"></pre></details>
+  </section>
+
+  <section class="stage" data-title="Audit trail">
+    <p class="lede">Every change above is on record. The live timeline shows what this session saw. The export is the vault's own ledger from DFNS, deposits and withdrawals with their counterparties, transaction hashes and requesters, ready for an auditor.</p>
+    <div class="panel" id="p-audit"></div>
+    <details class="raw"><summary>What happened in DFNS</summary><pre id="r-audit"></pre></details>
+  </section>
+
+</main>
+
+<footer class="pager">
+  <button id="prev" class="ghost" type="button">← Previous</button>
+  <span id="where" class="muted"></span>
+  <button id="next" class="primary" type="button">Next →</button>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

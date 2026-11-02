@@ -1,6 +1,6 @@
 # Institutional Custody
 
-> **Status: in progress.** Steps 1 to 5 are in place: setup script, first deposit, automatic checker, backend, and the Validation Gate handler with its signer simulator. See [Run it](#run-it).
+> **Status: in progress.** Steps 1 to 6 are in place: setup script, first deposit, automatic checker, backend, Validation Gate handler with its signer simulator, and the walkthrough page. See [Run it](#run-it).
 
 An institution holds client assets in Dfns Vaults and runs the controls its risk and compliance teams expect: every deposit is quarantined until screening clears it, every withdrawal needs another person's approval (1 of 2 in the demo, typically 2 of 3 in production), the institution's own **Validation Gate** gets a last veto before any key signs, and every balance movement can be exported for audit.
 
@@ -94,7 +94,7 @@ Every balance change is an entry in the vault's append-only ledger. The app read
 3. Automatic checker: a dedicated service account (role limited to `Policies:Evaluations:Read` and `Vote`) is one of the withdrawal approvers and votes by rule (amount cap, destination allowlist), like [Programmable Policy](../programmable-policy/). People stay in the approval group as the fallback above the cap. The checker must differ from the service account that requests withdrawals. *Done: `npm run checker`. It approves or leaves for a human, never rejects.*
 4. Backend (TypeScript, like [Collateral](../collateral/)): deposits and quarantines, withdrawals, approvals, audit export. It follows each operation's status: `Pending` (awaiting approvals) → `Executing` → `Broadcasted` → `Confirmed`, plus `Failed` / `Rejected`, and quarantined → release requested → released for deposits. *Done: `npm start`. It polls the Dfns API every 10 s rather than taking webhooks, since the demo machine isn't reachable from the internet. All polling sits in `src/poller.ts`, so webhooks (`vault.event.created`, `wallet.transfer.*`, `policy.approval.*`) can replace it later.*
 5. Validation Gate handler with HMAC verification and simple rules (amount cap, allowlist, business hours), plus a signer simulator. Take the request format, headers and responses from Dfns's own gate code (`validation-gate-core` and `validation-gate-test-utils` in `dfnsco/coresign`), so the handler plugs into a real signer unchanged. If an environment allows it, record one real end-to-end run. *Done: `npm run gate` and `npm run simulate`. A real signer run is still open (question 1).*
-6. Web UI: Operations, Approvers and Audit views, with a live status timeline per operation (from the webhooks above) and the raw Dfns calls behind it.
+6. Web UI: a live walkthrough in seven stages (vault and controls, deposit and quarantine, safekeeping, withdrawal and approval, Validation Gate, broadcast and confirmation, audit trail), each with live data, the actions it allows and the raw data behind it. *Done: `npm start`, then http://localhost:3000.*
 7. Tutorial page on docs.dfns.co.
 
 ## Run it
@@ -109,6 +109,37 @@ npm run checker         # leave running: votes on pending withdrawals
 The checker votes **approve** when a withdrawal is native ETH, its destination is in `CHECKER_ALLOWLIST` and its amount is at most `CHECKER_MAX_AMOUNT_WEI`. Otherwise it does nothing and logs why, so a person decides. It runs with its own service account (`CHECKER_*`), whose role only reads and votes on approvals.
 
 For a service account to vote, the approval group needs `serviceAccountsCanApprove: true`, which Dfns activates per organization. `npm run setup` sets it when it adds the checker; if the vote is refused, the checker logs it and leaves the withdrawal for a human.
+
+### Walkthrough page
+
+```bash
+npm start               # then open http://localhost:3000
+```
+
+One page, served by the backend, with no build step and no external resources. It walks through seven stages, all on live data. Each stage has a short explanation, a live panel and a "What happened in DFNS" section with the raw data behind it. You can release a deposit (stage 2) and request a withdrawal (stage 4) from the page. It polls the backend every 3 seconds and shows a banner when DFNS data can't be refreshed or the backend stops. The Validation Gate stage shows "gate not running" until `npm run gate` is up. Arrow keys move between stages, and `#stage-N` links straight to one.
+
+### Running the demo
+
+Before the call: fund the vault with a little Sepolia ETH, set `CHECKER_ALLOWLIST` and `GATE_ALLOWLIST` to the address you'll withdraw to, and keep the DFNS dashboard open on a second tab, logged in as a second approver.
+
+Open three terminals in `institutional-custody/`:
+
+1. `npm start`: the backend and the page.
+2. `npm run gate`: the institution's Validation Gate.
+3. `npm run checker`: the automatic approver.
+
+Then share the browser on http://localhost:3000 and go through the stages:
+
+| Stage | Do | Say |
+|---|---|---|
+| The rule (top) | Point at it | A key signs only after policy, approval and the institution's own gate have all said yes, and every step leaves a record. The rest of the page proves it, live. |
+| 1. Vault and controls | Show the vault, its tag and the two policies | The controls exist before any money arrives. Policies follow the tag, so a new vault with the same tag gets the same rules. The requester can never approve their own operation. |
+| 2. Deposit and quarantine | Send a small deposit from any Sepolia wallet before the call, or live. Click **Release**, give a reason, then approve it in the dashboard as the second person | Incoming funds are never spendable on arrival. Releasing them is an operation under policy too, with a reason kept for audit. |
+| 3. Safekeeping | Watch Quarantined turn into Available | The vault is a ledger: every amount is in exactly one state. |
+| 4. Withdrawal and approval | Request 0.001 ETH to the allowlisted address. Watch the checker approve it. Then request one above the cap: it waits for a person | Small, known transfers flow; anything else needs a human. The checker can only read and vote, and it's a different identity from the one that requests. |
+| 5. Validation Gate | In a fourth terminal, run `npm run simulate`. Six decisions appear | This is the institution's last veto, on its own side. A self-hosted signer calls it before every signature; here the simulator sends the exact same requests. |
+| 6. Broadcast and confirmation | Open the confirmed withdrawal's transaction on Etherscan | Every withdrawal carries its own timeline, from request to on-chain confirmation. |
+| 7. Audit trail | Click **Download CSV** | The ledger comes from DFNS itself, ready for an auditor: who asked, what moved, where, and the transaction hash. |
 
 ### Backend
 

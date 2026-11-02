@@ -1,4 +1,6 @@
 import http from 'http'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import express, { type Request, type Response, type NextFunction } from 'express'
 import { requireEnv, env } from './env.js'
 import { errorDetail } from './dfns.js'
@@ -6,11 +8,15 @@ import { recentTimeline } from './events.js'
 import { state, startPoller } from './poller.js'
 import { withdraw, releaseQuarantine, auditCsv } from './custody.js'
 import { parseUnits } from './units.js'
+import { controls, gateDecisions, approval } from './overview.js'
 
 requireEnv('DFNS_ORG_ID', 'DFNS_AUTH_TOKEN', 'DFNS_CRED_ID', 'DFNS_PRIVATE_KEY', 'VAULT_ID')
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 app.use(express.json())
+// The walkthrough page: plain HTML, CSS and JS, no build step
+app.use(express.static(path.join(__dirname, '../public')))
 
 type Handler = (req: Request, res: Response) => Promise<unknown>
 const route = (fn: Handler) => (req: Request, res: Response, next: NextFunction) => fn(req, res).then(r => res.json(r ?? { ok: true })).catch(next)
@@ -19,6 +25,12 @@ const badRequest = (message: string) => Object.assign(new Error(message), { stat
 app.get('/api/state', route(async () => state))
 
 app.get('/api/timeline', route(async () => recentTimeline()))
+
+app.get('/api/config', route(() => controls()))
+
+app.get('/api/gate', route(() => gateDecisions()))
+
+app.get('/api/approvals/:id', route(req => approval(String(req.params.id))))
 
 app.post('/api/withdrawals', route(async req => {
     const { amountEth, to } = req.body ?? {}
@@ -59,6 +71,6 @@ process.on('unhandledRejection', err => { console.error('Unhandled:', err) })
 
 const PORT = Number(env('PORT') || 3000)
 http.createServer(app).listen(PORT, () => {
-    console.log(`\n  Custody backend → http://localhost:${PORT}/api/state\n`)
+    console.log(`\n  Custody walkthrough → http://localhost:${PORT}\n`)
     startPoller()
 })
