@@ -2,7 +2,7 @@
 
 > **Status: in progress.** Step 1 (setup script) is in place: `npm install`, fill `.env` from `.env.example`, then `npm run setup`.
 
-An institution holds client assets in Dfns Vaults and runs the controls its risk and compliance teams expect: every deposit is quarantined until screening clears it, every withdrawal needs two of three approvers, the institution's own **Validation Gate** gets a last veto before any key signs, and every balance movement can be exported for audit.
+An institution holds client assets in Dfns Vaults and runs the controls its risk and compliance teams expect: every deposit is quarantined until screening clears it, every withdrawal needs another person's approval (1 of 2 in the demo, typically 2 of 3 in production), the institution's own **Validation Gate** gets a last veto before any key signs, and every balance movement can be exported for audit.
 
 **Business use case:** custodians, banks and asset managers that need segregated client balances, maker-checker withdrawals and an independent signing veto, with a ledger auditors can read.
 
@@ -10,7 +10,7 @@ An institution holds client assets in Dfns Vaults and runs the controls its risk
 
 | Existing blueprint | What it shows | What this one adds |
 |---|---|---|
-| [Bank Custody](../bank-custody/) | Retail wallets next to fiat accounts, one approver over a threshold | Institutional vaults, 2-of-3 approvals, deposit quarantine and screening, audit export |
+| [Bank Custody](../bank-custody/) | Retail wallets next to fiat accounts, one approver over a threshold | Institutional vaults, maker-checker approvals, deposit quarantine and screening, audit export |
 | [Collateral](../collateral/) | Vaults, locks and quarantine release between a borrower and a lender | The full custody lifecycle around a single institution |
 | [Programmable Policy](../programmable-policy/) | A service account approving decoded transactions | A Validation Gate: the institution's last veto, enforced by the signer itself |
 
@@ -35,14 +35,14 @@ External sender        Dfns Vault                     Screening              Cus
      |                      |<------------------------------------- release / keep |
 ```
 
-### Withdrawal: 2-of-3 approval, Validation Gate, broadcast
+### Withdrawal: approval, Validation Gate, broadcast
 
 ```
 Initiator           Dfns API / Policies        Approvers (3)       Signer              Validation Gate        Chain
     |                      |                        |                 |                 (institution)          |
     |-- vault transfer --->|                        |                 |                      |                |
     |                      | amount Locked          |                 |                      |                |
-    |                      | policy: 2 of 3 ------->|                 |                      |                |
+    |                      | policy: 1 of 2 ------->|                 |                      |                |
     |                      |<---- approve (x2) -----|                 |                      |                |
     |                      |-- sign request ----------------------->  |                      |                |
     |                      |                        |                 |-- POST signerInfo -->|                |
@@ -65,7 +65,7 @@ Every balance change is an entry in the vault's append-only ledger. The app read
 | Screening | Release-quarantine policy scoped by vault tag, with a KYT provider (Chainalysis, Elliptic or Global Ledger) |
 | Manual review | Get Vault Quarantine, Release Quarantine |
 | Withdrawal | Create Vault Transfer (reserves amount and fee from Available) |
-| 2-of-3 approval | Signing policy with an approval quorum; approvers decide with passkeys |
+| Withdrawal approval (1 of 2 in the demo) | Signing policy with an approval quorum; approvers decide with passkeys |
 | Last veto | Validation Gate: the signer POSTs `signerInfo` (`kind`, `keyId`, `publicKey`, `txHash`) to the institution's endpoint, HMAC-signed; any non-200 rejects |
 | Audit | List Vault History, `Vault event created` webhook |
 
@@ -84,12 +84,12 @@ Every balance change is an entry in the vault's append-only ledger. The app read
 1. Is there an environment (a SaaS org configured by Dfns, or an on-prem/dev one) where the gate can be enabled for real? Not blocking: the recipe uses the simulator; a real run would only be recorded for sales demos.
 2. Which screening provider works on testnet vault deposits, and how is it wired to the release-quarantine policy? Per the docs, only Chainalysis is wired to quarantine release (`ChainalysisQuarantineScreening`), and it screens mainnets only, so the setup script falls back to one manual approval on Sepolia.
 3. The gate only receives `txHash`, not the decoded transaction. Should the handler look up the pending transfer (by hash) through the Dfns API to apply business rules?
-4. Approvals: which three org users act as approvers? Each needs `Policies:Evaluations:Vote`; nobody can approve their own request, and service accounts can't approve, so it takes real people.
+4. Approvals: which two org users act as approvers? Each needs `Policies:Evaluations:Vote`; nobody can approve their own request, and service accounts can't approve, so it takes real people.
 5. Network: EVM testnet (Sepolia or Hoodi) to start; Bitcoin and Solana later?
 
 ## Plan
 
-1. Setup script: vault, address, tags, policies (release-quarantine with manual review on testnet, 2-of-3 withdrawal approval). *Done.*
+1. Setup script: vault, address, tags, policies (release-quarantine with manual review on testnet, 1-of-2 withdrawal approval). *Done.*
 2. First deposit: send Sepolia ETH from an ordinary Dfns wallet to the vault address. It lands as Quarantined and exercises the release policy end to end.
 3. Backend (TypeScript, like [Collateral](../collateral/)): deposits and quarantines, withdrawals, approvals, audit export. Track each operation's status from webhooks rather than polling: `Pending` (awaiting approvals) → `Executing` → `Broadcasted` → `Confirmed`, plus `Failed` / `Rejected`, and quarantine and release for deposits.
 4. Validation Gate handler with HMAC verification and simple rules (amount cap, allowlist, business hours), plus a signer simulator. Take the request format, headers and responses from Dfns's own gate code (`validation-gate-core` and `validation-gate-test-utils` in `dfnsco/coresign`), so the handler plugs into a real signer unchanged. If an environment allows it, record one real end-to-end run.

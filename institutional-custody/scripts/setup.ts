@@ -2,7 +2,7 @@
 // Safe to re-run: anything already set in .env is reused, not recreated.
 //
 //   vault              → tagged custody vault + Sepolia address
-//   withdrawal policy  → vault transfers need 2 of 3 approvers
+//   withdrawal policy  → vault transfers need 1 of 2 approvers
 //   quarantine policy  → deposits need a manual review before release
 import fs from 'fs'
 import path from 'path'
@@ -16,8 +16,10 @@ const NETWORK = 'EthereumSepolia'
 // Policies on quarantine release are scoped by this vault tag, so any vault
 // the institution adds later with the same tag gets the same controls.
 const TAG = 'custody-demo'
-const APPROVERS = 3
-const QUORUM = 2
+// 1 of 2 keeps the demo runnable with two people; an institution would
+// typically use 2 of 3 or more.
+const APPROVERS = 2
+const QUORUM = 1
 
 requireEnv('DFNS_ORG_ID', 'DFNS_AUTH_TOKEN', 'DFNS_CRED_ID', 'DFNS_PRIVATE_KEY')
 
