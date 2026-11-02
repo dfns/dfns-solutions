@@ -19,6 +19,12 @@ function eth(wei) {
     return `${s.slice(0, -18)}${frac ? '.' + frac : ''} ETH`
 }
 
+// Reasons written in wei (older checker and gate decisions) read as ETH. The
+// raw data keeps them as recorded.
+const humanize = text => esc(text).replace(/\b(\d{6,}) wei\b/g, (_, wei) => eth(wei))
+
+const copyButton = value => `<button class="copy ghost" type="button" data-copy="${esc(value)}" title="Copy ${esc(value)}">Copy</button>`
+
 const short = (id, n = 6) => !id ? '' : id.length > 2 * n + 3 ? `${id.slice(0, n + 2)}…${id.slice(-n)}` : id
 const time = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''
 const dateTime = iso => iso ? new Date(iso).toLocaleString([], { dateStyle: 'short', timeStyle: 'medium' }) : ''
@@ -106,6 +112,26 @@ function badge(i, n) {
 
 // ── Stage 1: the vault and its controls ─────────────────────────────
 
+// A policy's filters as a sentence; the raw JSON stays in "What happened in DFNS"
+function scopeText(filters) {
+    if (!filters || !Object.keys(filters).length) return 'the whole organization'
+    const parts = []
+    const tags = (f, what) => {
+        if (f?.hasAny) parts.push(`${what} tagged ${f.hasAny.map(t => `<span class="chip info">${esc(t)}</span>`).join(' or ')}`)
+        if (f?.hasAll) parts.push(`${what} tagged ${f.hasAll.map(t => `<span class="chip info">${esc(t)}</span>`).join(' and ')}`)
+    }
+    tags(filters.vaultTags, 'vaults')
+    tags(filters.walletTags, 'wallets')
+    if (filters.vaultId?.in) parts.push(`vault${filters.vaultId.in.length > 1 ? 's' : ''} ${filters.vaultId.in.map(id => `<span class="mono">${esc(short(id))}</span>`).join(', ')}`)
+    if (filters.walletId?.in) {
+        const own = data.state?.vault?.walletId
+        parts.push(filters.walletId.in.map(id => id === own
+            ? `the vault's own wallet <span class="mono" title="${esc(id)}">${esc(short(id))}</span>`
+            : `wallet <span class="mono" title="${esc(id)}">${esc(short(id))}</span>`).join(', '))
+    }
+    return parts.join('; ') || `<span class="mono">${esc(JSON.stringify(filters))}</span>`
+}
+
 function renderPolicy(title, p) {
     if (!p) return ''
     if (p.error) return `<div class="card"><h3>${esc(title)}</h3><p class="msg err">${esc(p.error)}</p></div>`
@@ -120,7 +146,7 @@ function renderPolicy(title, p) {
         <dt>Policy</dt><dd>${esc(p.name)} <span class="mono muted">${esc(p.id)}</span></dd>
         <dt>Gates</dt><dd class="mono">${esc(p.activityKind)}</dd>
         <dt>Triggers</dt><dd>${p.rule === 'AlwaysTrigger' ? 'every time' : esc(p.rule)}</dd>
-        <dt>Scope</dt><dd class="mono">${esc(JSON.stringify(p.filters ?? 'whole organization'))}</dd>
+        <dt>Applies to</dt><dd>${scopeText(p.filters)}</dd>
         ${groups}</dl></div>`
 }
 
@@ -144,7 +170,7 @@ function renderControls() {
             <dt>ID</dt><dd class="mono">${esc(v.id)}</dd>
             <dt>Tag</dt><dd><span class="chip info">${esc(v.tag)}</span> <span class="muted">policies follow the tag</span></dd>
             <dt>Network</dt><dd>${esc(v.network)}</dd>
-            <dt>Address</dt><dd>${v.address ? `${addrLink(v.address)} <span class="mono muted">${esc(v.address)}</span>` : '<span class="muted">loading…</span>'}</dd>
+            <dt>Address</dt><dd>${v.address ? `${addrLink(v.address)} ${copyButton(v.address)}` : '<span class="muted">loading…</span>'}</dd>
         </dl></div>
         ${renderPolicy('Deposit release', c.policies.quarantine)}
         ${renderPolicy('Withdrawal approval', c.policies.withdrawal)}
@@ -178,7 +204,7 @@ function renderDeposits() {
     if ($('p-deposits').contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return
     $('p-deposits').innerHTML = deposits.length
         ? `<div class="card table-wrap"><table><thead><tr><th>Status</th><th>Amount</th><th>From</th><th>Transaction</th><th>Release</th></tr></thead><tbody>${rows}</tbody></table></div>`
-        : `<p class="empty">No deposits yet. Send Sepolia ETH to ${addr ? `<span class="mono">${esc(addr)}</span>` : 'the vault address'}: it appears here as Quarantined within a few seconds of DFNS seeing it.</p>`
+        : `<p class="empty">No deposits yet. Send Sepolia ETH to ${addr ? `${addrLink(addr)} ${copyButton(addr)}` : 'the vault address'}: it appears here as Quarantined within a few seconds of DFNS seeing it.</p>`
     raw('r-deposits', { 'deposits (List Vault History)': s.deposits, 'pending quarantines (List Vault Quarantines)': s.quarantines })
 }
 
@@ -231,7 +257,7 @@ function decisionsOf(approvalId) {
     const a = approvalId && data.approvals[approvalId]
     if (!a) return approvalId ? '<span class="muted">loading…</span>' : '<span class="muted">no approval needed</span>'
     if (!a.decisions.length) return a.status === 'Pending' ? '<span class="hint">no decision yet</span>' : chip(a.status)
-    return a.decisions.map(d => `${chip(d.value)} ${who(d.userId)}${d.reason ? `<div class="hint">“${esc(d.reason)}”</div>` : ''}`).join('<br>')
+    return a.decisions.map(d => `${chip(d.value)} ${who(d.userId)}${d.reason ? `<div class="hint">“${humanize(d.reason)}”</div>` : ''}`).join('<br>')
 }
 
 let withdrawFormBuilt = false
@@ -311,7 +337,7 @@ function renderGate() {
         return
     }
     const rows = g.decisions.map(d => `<tr><td>${d.approved ? '<span class="chip good">Approved</span>' : '<span class="chip crit">Refused</span>'}<div class="hint">${esc(time(d.at))} · HTTP ${esc(d.status)}</div></td>
-        <td>${esc(d.kind ?? '–')}</td><td>${d.amount ? eth(d.amount) : '–'}</td><td>${addrLink(d.to) || '–'}</td><td>${esc(d.reason)}</td></tr>`).join('')
+        <td>${esc(d.kind ?? '–')}</td><td>${d.amount ? eth(d.amount) : '–'}</td><td>${addrLink(d.to) || '–'}</td><td>${humanize(d.reason)}</td></tr>`).join('')
     $('p-gate').innerHTML = `<div class="cards">
         <div class="card"><h3>Rules in force</h3>${gateRules(g.rules)}</div>
         <div class="card"><h3>Where its requests come from</h3>
@@ -362,7 +388,7 @@ function renderAudit() {
         <p>The vault's full history from DFNS (List Vault History): date, kind, amount, asset, counterparty, transaction hash, status and requester.</p>
         <a href="/api/audit.csv" download><button class="primary" type="button" tabindex="-1">Download CSV</button></a></div>
         <div class="card"><h3>Live timeline</h3>${tl.length
-            ? `<ul class="tl">${tl.map(e => `<li><span class="t">${esc(time(e.at))}</span><span class="k">${kindChip(e.kind)}</span><span>${esc(e.title)}${e.txHash ? ` · ${txLink(e.txHash)}` : ''}</span></li>`).join('')}</ul>`
+            ? `<ul class="tl">${tl.map(e => `<li><span class="t">${esc(time(e.at))}</span><span class="k">${kindChip(e.kind)}</span><span>${humanize(e.title)}${e.txHash ? ` · ${txLink(e.txHash)}` : ''}</span></li>`).join('')}</ul>`
             : '<p class="empty">Nothing yet. Status changes appear here as the backend sees them.</p>'}</div>`
     raw('r-audit', { 'GET /api/timeline': data.timeline })
 }
@@ -403,6 +429,19 @@ async function tick() {
 async function loadConfig() {
     try { data.config = await get('/api/config') } catch (err) { data.config = null; banner(null, err.message) }
 }
+
+// Copy buttons (the page runs on localhost, where the clipboard API is allowed)
+document.addEventListener('click', async e => {
+    const b = e.target.closest('button[data-copy]')
+    if (!b) return
+    try {
+        await navigator.clipboard.writeText(b.dataset.copy)
+        b.textContent = 'Copied'
+    } catch {
+        b.textContent = 'Copy failed'
+    }
+    setTimeout(() => { b.textContent = 'Copy' }, 1500)
+})
 
 // ── Theme ───────────────────────────────────────────────────────────
 

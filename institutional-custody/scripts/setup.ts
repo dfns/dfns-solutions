@@ -2,7 +2,7 @@
 // Safe to re-run: anything already set in .env is reused, not recreated.
 //
 //   vault              → tagged custody vault + Sepolia address
-//   withdrawal policy  → vault transfers need 1 of 2 approvers
+//   withdrawal policy  → vault transfers need one approval, never the requester's
 //   checker            → added to the withdrawal approvers, votes by rule
 //   quarantine policy  → deposits need a manual review before release
 import fs from 'fs'
@@ -21,6 +21,27 @@ const TAG = 'custody-demo'
 // typically use 2 of 3 or more.
 const APPROVERS = 2
 const QUORUM = 1
+
+// Named after the rule, not the head count, which changes when the checker
+// joins: "one approver: a person or the checker"
+function withdrawalPolicyName(withChecker: boolean) {
+    const who = withChecker ? 'a person or the checker' : 'a person'
+    return `Custody demo: withdrawal approval (${QUORUM === 1 ? 'one approver' : `${QUORUM} approvers`}: ${who})`
+}
+
+type Policy = Awaited<ReturnType<typeof api.policies.getPolicy>>
+type PolicyBody = Parameters<typeof api.policies.updatePolicy>[0]['body']
+
+// Update Policy replaces the whole policy, and a Policies:Modify policy on
+// the org holds the update for approval instead of applying it. So send it,
+// then read the policy back rather than trust the call.
+async function updateAndConfirm(policyId: string, body: PolicyBody, applied: (p: Policy) => boolean, what: string) {
+    await api.policies.updatePolicy({ policyId, body })
+    if (applied(await api.policies.getPolicy({ policyId }))) return true
+    console.log(`  ! ${what} sent but not applied yet: it may be pending approval`)
+    console.log(`    under a Policies:Modify policy. Approve it in the dashboard, then re-run.`)
+    return false
+}
 
 requireEnv('DFNS_ORG_ID', 'DFNS_AUTH_TOKEN', 'DFNS_CRED_ID', 'DFNS_PRIVATE_KEY')
 
@@ -81,10 +102,10 @@ async function ensureWithdrawalPolicy(walletId: string) {
     if (approvers.length > APPROVERS) {
         console.log(`  ! APPROVER_USER_IDS has ${approvers.length} IDs, using the first ${APPROVERS}`)
     }
-    return ensure('WITHDRAWAL_POLICY_ID', `Withdrawal policy (${QUORUM} of ${APPROVERS})`, async () => {
+    return ensure('WITHDRAWAL_POLICY_ID', 'Withdrawal policy', async () => {
         const policy = await api.policies.createPolicy({
             body: {
-                name: `Custody demo: ${QUORUM} of ${APPROVERS} withdrawal approval`,
+                name: withdrawalPolicyName(false),
                 activityKind: 'Wallets:Sign',
                 rule: { kind: 'AlwaysTrigger' },
                 action: {
@@ -103,9 +124,9 @@ async function ensureWithdrawalPolicy(walletId: string) {
 }
 
 // Adds the checker service account to the withdrawal policy's approval group,
-// keeping everything else on the policy as it is. Update Policy replaces the
-// whole policy, so the current one is read first and sent back with the
-// checker added. Service accounts only vote when the group allows it
+// keeping everything else on the policy as it is: the current one is read
+// first and sent back with the checker added (and the name to match). Service
+// accounts only vote when the group allows it
 // (serviceAccountsCanApprove), which Dfns has to activate on the org.
 async function ensureCheckerApprover(policyId: string | undefined) {
     const checkerId = env('CHECKER_USER_ID')
@@ -128,36 +149,43 @@ async function ensureCheckerApprover(policyId: string | undefined) {
         // An empty approvers object means anyone in the org: nothing to add to
         throw new Error(`Policy ${policyId} lets anyone approve; name the approvers first`)
     }
-    await api.policies.updatePolicy({
-        policyId,
-        body: {
-            name: policy.name,
-            activityKind: policy.activityKind,
-            rule: policy.rule,
-            action: {
-                ...policy.action,
-                approvalGroups: [{
-                    ...group,
-                    approvers: { ...group.approvers, userId: { in: [...new Set([...users, checkerId])] } },
-                    serviceAccountsCanApprove: true,
-                }, ...others],
-            },
-            filters: policy.filters,
+    const applied = await updateAndConfirm(policyId, {
+        name: withdrawalPolicyName(true),
+        activityKind: policy.activityKind,
+        rule: policy.rule,
+        action: {
+            ...policy.action,
+            approvalGroups: [{
+                ...group,
+                approvers: { ...group.approvers, userId: { in: [...new Set([...users, checkerId])] } },
+                serviceAccountsCanApprove: true,
+            }, ...others],
         },
-    })
-    // A Policies:Modify policy on the org holds the update for approval
-    // instead of applying it, so read it back rather than trust the call
-    const updated = await api.policies.getPolicy({ policyId })
-    const applied = updated.activityKind === 'Wallets:Sign' && updated.action.kind === 'RequestApproval'
-        && 'userId' in updated.action.approvalGroups[0].approvers
-        && updated.action.approvalGroups[0].approvers.userId?.in.includes(checkerId)
-    if (!applied) {
-        console.log(`  ! Checker update sent but not applied yet: it may be pending approval`)
-        console.log(`    under a Policies:Modify policy. Approve it, then re-run.`)
-        return false
+        filters: policy.filters,
+    },
+        p => p.activityKind === 'Wallets:Sign' && p.action.kind === 'RequestApproval'
+            && 'userId' in p.action.approvalGroups[0].approvers
+            && !!p.action.approvalGroups[0].approvers.userId?.in.includes(checkerId),
+        'Checker update')
+    if (applied) console.log(`  + Checker ${checkerId} added to "${group.name ?? 'approvers'}"`)
+    return applied
+}
+
+// Renames an existing withdrawal policy whose name no longer describes the
+// rule (older ones said "1 of 2"). Everything else is sent back unchanged.
+async function ensureWithdrawalPolicyName(policyId: string | undefined, withChecker: boolean) {
+    if (!policyId) return
+    const name = withdrawalPolicyName(withChecker)
+    const policy = await api.policies.getPolicy({ policyId })
+    if (policy.name === name) {
+        console.log(`  ✓ Name: "${name}"`)
+        return
     }
-    console.log(`  + Checker ${checkerId} added to "${group.name ?? 'approvers'}"`)
-    return true
+    if (policy.activityKind !== 'Wallets:Sign') throw new Error(`Policy ${policyId} is not a Wallets:Sign policy`)
+    const renamed = await updateAndConfirm(policyId,
+        { name, activityKind: policy.activityKind, rule: policy.rule, action: policy.action, filters: policy.filters },
+        p => p.name === name, 'Rename')
+    if (renamed) console.log(`  + Renamed "${policy.name}" → "${name}"`)
 }
 
 // Chainalysis is the only provider wired to quarantine release
@@ -188,6 +216,7 @@ async function main() {
     console.log('\nPolicies')
     const withdrawal = await ensureWithdrawalPolicy(vault.walletId)
     const checker = await ensureCheckerApprover(withdrawal)
+    await ensureWithdrawalPolicyName(withdrawal, checker)
     const quarantine = await ensureQuarantinePolicy()
 
     console.log(`
@@ -197,7 +226,7 @@ IDs saved to .env.
   Fund this address  ${vault.address}
     → Sepolia ETH from a faucet
   Withdrawals        ${withdrawal ?? 'no policy yet: set APPROVER_USER_IDS and re-run'}
-    → ${QUORUM} of ${APPROVERS} approvers on every transfer from the vault
+    → ${withdrawal ? withdrawalPolicyName(checker).replace('Custody demo: ', '') : ''} on every transfer from the vault
     → checker ${checker ? 'is an approver: run npm run checker' : 'not set up yet (see above)'}
   Deposits           ${quarantine}
     → one manual approval before quarantined funds become Available.

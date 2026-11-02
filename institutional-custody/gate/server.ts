@@ -6,6 +6,7 @@ import http from 'http'
 import { requireEnv, env } from '../src/env.js'
 import { CONTENT_TYPE, SIGNATURE_HEADER, SIGNATURE_TYPE, SIGNATURE_TYPE_HEADER, STATUS, parse, parseSecret, verify, type ValidationGateReq } from './protocol.js'
 import { decide, loadConfig } from './rules.js'
+import { NATIVE_ETH, display } from '../src/units.js'
 
 requireEnv('GATE_SHARED_SECRET', 'GATE_MAX_AMOUNT_WEI')
 
@@ -83,7 +84,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(port, () => {
     console.log(`Validation Gate on http://localhost:${port}${PATH}`)
-    console.log(`  cap        ${config.maxAmountWei} wei`)
+    console.log(`  cap        ${display(config.maxAmountWei.toString(), NATIVE_ETH)} (${config.maxAmountWei} wei)`)
     console.log(`  allowlist  ${[...config.allowlist].join(', ') || '(empty: every destination is rejected)'}`)
     console.log(`  hours      ${env('GATE_HOURS') ? `${env('GATE_HOURS')} ${config.timeZone}` : 'any time'}`)
     console.log(`  key export ${config.allowKeyExport ? 'allowed' : 'rejected'}, no intent ${config.allowNoIntent ? 'allowed' : 'rejected'}\n`)

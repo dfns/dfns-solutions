@@ -11,6 +11,7 @@
 import { DfnsError } from '@dfns/sdk'
 import { requireEnv, env } from '../src/env.js'
 import { checkerApi } from '../src/dfns.js'
+import { NATIVE_ETH, display } from '../src/units.js'
 
 requireEnv(
     'DFNS_ORG_ID', 'CHECKER_AUTH_TOKEN', 'CHECKER_CRED_ID', 'CHECKER_PRIVATE_KEY', 'CHECKER_USER_ID',
@@ -23,6 +24,9 @@ const POLICY_ID = env('WITHDRAWAL_POLICY_ID')
 const MAX_AMOUNT = BigInt(env('CHECKER_MAX_AMOUNT_WEI'))
 // EVM addresses compare case-insensitively (checksums only change the case)
 const ALLOWLIST = new Set(env('CHECKER_ALLOWLIST').split(',').map(a => a.trim().toLowerCase()).filter(Boolean))
+
+// People read these reasons in the dashboard and on the page: ETH, not wei
+const eth = (wei: string | bigint) => display(wei.toString(), NATIVE_ETH)
 
 type Approval = Awaited<ReturnType<typeof checkerApi.policies.listApprovals>>['items'][number]
 
@@ -50,14 +54,14 @@ function evaluate(approval: Approval) {
     // Only native ETH has a wei amount to compare against the cap
     if (body.kind !== 'Native') return `${body.kind} transfer, only native ETH is checked`
     if (!ALLOWLIST.has(body.to.toLowerCase())) return `destination ${body.to} is not on the allowlist`
-    if (BigInt(body.amount) > MAX_AMOUNT) return `amount ${body.amount} wei is over the cap of ${MAX_AMOUNT} wei`
+    if (BigInt(body.amount) > MAX_AMOUNT) return `amount ${eth(body.amount)} is over the cap of ${eth(MAX_AMOUNT)}`
     return undefined
 }
 
 function describe(approval: Approval) {
     const t = approval.activity.kind === 'Wallets:Sign' ? approval.activity.transferRequest : undefined
     if (!t) return approval.id
-    const amount = 'amount' in t.requestBody ? ` ${t.requestBody.amount} wei` : ''
+    const amount = 'amount' in t.requestBody ? ` ${eth(t.requestBody.amount)}` : ''
     const to = 'to' in t.requestBody ? ` → ${t.requestBody.to}` : ''
     return `${approval.id} (${t.id}:${amount}${to})`
 }
@@ -79,7 +83,7 @@ async function checkOnce() {
         try {
             await checkerApi.policies.createApprovalDecision({
                 approvalId: approval.id,
-                body: { value: 'Approved', reason: `Checker: destination allowlisted, amount ≤ ${MAX_AMOUNT} wei` },
+                body: { value: 'Approved', reason: `Checker: destination allowlisted, amount ≤ ${eth(MAX_AMOUNT)}` },
             })
             console.log(`  ✓ ${describe(approval)}: approved`)
         } catch (e) {
@@ -95,7 +99,7 @@ async function checkOnce() {
 
 async function main() {
     console.log(`Checker ${CHECKER_ID} on policy ${POLICY_ID}`)
-    console.log(`  cap        ${MAX_AMOUNT} wei`)
+    console.log(`  cap        ${eth(MAX_AMOUNT)} (${MAX_AMOUNT} wei)`)
     console.log(`  allowlist  ${[...ALLOWLIST].join(', ')}`)
     console.log(`Polling every ${POLL_MS / 1000}s. Ctrl+C to stop.\n`)
     for (;;) {

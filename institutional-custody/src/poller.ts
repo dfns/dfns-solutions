@@ -77,7 +77,9 @@ function trackDeposit(item: Extract<VaultHistoryItem, { kind: 'IncomingTransfer'
         PendingPolicyApproval: `Release of ${amount} requested, awaiting approval`,
         Released: `Deposit of ${amount} released: now Available`,
     }
-    transition(item.quarantine.id, item.status, { kind: 'deposit', ref: item.quarantine.id, title: titles[item.status], txHash: item.incomingTransfer.txHash })
+    // The history has no date for the release request itself: that one is when it was seen
+    const at = { Quarantined: item.timestamp, PendingPolicyApproval: undefined, Released: item.quarantine.dateReleased }[item.status]
+    transition(item.quarantine.id, item.status, { kind: 'deposit', ref: item.quarantine.id, title: titles[item.status], txHash: item.incomingTransfer.txHash, at })
 }
 
 // Withdrawals: Pending → Executing → Broadcasted → Confirmed, or Failed /
@@ -94,7 +96,14 @@ function trackWithdrawal(item: Extract<VaultHistoryItem, { kind: 'OutgoingTransf
         Failed: `Withdrawal of ${amount} failed${t.reason ? `: ${t.reason}` : ''}`,
         Rejected: `Withdrawal of ${amount} rejected by an approver`,
     }
-    transition(t.id, t.status, { kind: 'withdrawal', ref: t.id, title: titles[t.status] ?? `Withdrawal ${t.status}`, txHash: t.txHash })
+    const at: Record<string, string | undefined> = {
+        Pending: t.dateRequested,
+        Executing: t.datePolicyResolved,
+        Broadcasted: t.dateBroadcasted,
+        Confirmed: t.dateConfirmed,
+        Rejected: t.datePolicyResolved,
+    }
+    transition(t.id, t.status, { kind: 'withdrawal', ref: t.id, title: titles[t.status] ?? `Withdrawal ${t.status}`, txHash: t.txHash, at: at[t.status] })
 }
 
 async function history() {
@@ -165,14 +174,14 @@ async function approvals(walletId: string) {
         }
         return []
     })
-    for (const a of mine) transition(a.id, 'Pending', { kind: 'approval', ref: a.id, title: `Approval requested: ${a.summary}` })
+    for (const a of mine) transition(a.id, 'Pending', { kind: 'approval', ref: a.id, title: `Approval requested: ${a.summary}`, at: a.dateCreated })
     // Approvals that left the pending list were decided (or expired): fetch
     // each one once to say how
     const pendingIds = new Set(mine.map(a => a.id))
     for (const prev of state.approvals.filter(a => !pendingIds.has(a.id))) {
         const done = await api.policies.getApproval({ approvalId: prev.id })
         const by = done.decisions.map(d => `${d.userId} ${d.value}`).join(', ')
-        transition(prev.id, done.status, { kind: 'approval', ref: prev.id, title: `Approval ${done.status.toLowerCase()}: ${prev.summary}${by ? ` (${by})` : ''}` })
+        transition(prev.id, done.status, { kind: 'approval', ref: prev.id, title: `Approval ${done.status.toLowerCase()}: ${prev.summary}${by ? ` (${by})` : ''}`, at: done.dateResolved })
     }
     return mine
 }

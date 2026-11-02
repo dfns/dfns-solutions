@@ -2,7 +2,7 @@
 
 > **Status: in progress.** Steps 1 to 6 are in place: setup script, first deposit, automatic checker, backend, Validation Gate handler with its signer simulator, and the walkthrough page. See [Run it](#run-it).
 
-An institution holds client assets in Dfns Vaults and runs the controls its risk and compliance teams expect: every deposit is quarantined until screening clears it, every withdrawal needs another person's approval (1 of 2 in the demo, typically 2 of 3 in production), the institution's own **Validation Gate** gets a last veto before any key signs, and every balance movement can be exported for audit.
+An institution holds client assets in Dfns Vaults and runs the controls its risk and compliance teams expect: every deposit is quarantined until screening clears it, every withdrawal needs an approval that the requester can't give (in the demo, one approver: a person or an automatic checker; typically 2 of 3 people in production), the institution's own **Validation Gate** gets a last veto before any key signs, and every balance movement can be exported for audit.
 
 **Business use case:** custodians, banks and asset managers that need segregated client balances, maker-checker withdrawals and an independent signing veto, with a ledger auditors can read.
 
@@ -42,8 +42,8 @@ Initiator           Dfns API / Policies        Approvers (3)       Signer       
     |                      |                        |                 |                 (institution)          |
     |-- vault transfer --->|                        |                 |                      |                |
     |                      | amount Locked          |                 |                      |                |
-    |                      | policy: 1 of 2 ------->|                 |                      |                |
-    |                      |<---- approve (x2) -----|                 |                      |                |
+    |                      | policy: 1 approval --->|                 |                      |                |
+    |                      |<------ approve --------|                 |                      |                |
     |                      |-- sign request ----------------------->  |                      |                |
     |                      |                        |                 |-- POST signerInfo -->|                |
     |                      |                        |                 |<----- 200 / reject --|                |
@@ -65,7 +65,7 @@ Every balance change is an entry in the vault's append-only ledger. The app read
 | Screening | Release-quarantine policy scoped by vault tag, with a KYT provider (Chainalysis, Elliptic or Global Ledger) |
 | Manual review | Get Vault Quarantine, Release Quarantine |
 | Withdrawal | Create Vault Transfer (reserves amount and fee from Available) |
-| Withdrawal approval (1 of 2 in the demo) | Signing policy with an approval quorum; approvers decide with passkeys |
+| Withdrawal approval (one approver in the demo: a person or the checker) | Signing policy with an approval quorum; approvers decide with passkeys |
 | Last veto | Validation Gate: the signer POSTs `signerInfo` (`kind`, `keyId`, `publicKey`, `txHash`) plus the intent (`path`, `payload { kind, to, amount }`) and source and destination addresses to the institution's endpoint, HMAC-signed; any non-200 rejects |
 | Audit | List Vault History, `Vault event created` webhook |
 

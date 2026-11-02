@@ -119,6 +119,7 @@ button.primary:hover { background: var(--primary-hover); }
 button.ghost { background: transparent; color: var(--body); border-color: var(--border-strong); }
 button.ghost:hover { border-color: var(--accent); color: var(--accent); }
 button:disabled { opacity: 0.5; cursor: default; }
+button.copy { padding: 2px 10px; font-size: 12px; margin-left: 6px; vertical-align: middle; }
 .msg { font-size: 14px; margin-top: 8px; }
 .msg.ok { color: var(--good); }
 .msg.err { color: var(--crit); }

@@ -3,6 +3,10 @@
 // if everything upstream were bypassed. Every rule fails closed: anything the
 // gate can't check is rejected.
 import type { ValidationGateReq } from './protocol.js'
+import { NATIVE_ETH, display } from '../src/units.js'
+
+// Reasons are read by people (gate log, walkthrough page): ETH, not wei
+const eth = (wei: string | bigint) => display(wei.toString(), NATIVE_ETH)
 
 export type GateConfig = {
     maxAmountWei: bigint
@@ -74,7 +78,7 @@ export function decide(req: ValidationGateReq, config: GateConfig, now = new Dat
     if (!config.allowlist.has(to)) return reject(`destination ${payload.to} is not on the allowlist`)
     if (!/^\d+$/.test(payload.amount)) return reject(`amount "${payload.amount}" is not a whole number`)
     if (BigInt(payload.amount) > config.maxAmountWei) {
-        return reject(`amount ${payload.amount} wei is over the cap of ${config.maxAmountWei} wei`)
+        return reject(`amount ${eth(payload.amount)} is over the cap of ${eth(config.maxAmountWei)}`)
     }
-    return { approved: true, reason: `${payload.amount} wei to allowlisted ${payload.to}` }
+    return { approved: true, reason: `${eth(payload.amount)} to allowlisted ${payload.to}` }
 }
