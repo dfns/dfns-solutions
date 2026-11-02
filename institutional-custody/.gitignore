@@ -1,3 +1,5 @@
 node_modules/
 .env
 data/
+# Audit exports from /api/audit.csv
+*.csv
