@@ -1,6 +1,6 @@
 # Institutional Custody
 
-> **Status: design draft.** This folder holds the flow and the plan; no code yet.
+> **Status: in progress.** Step 1 (setup script) is in place: `npm install`, fill `.env` from `.env.example`, then `npm run setup`.
 
 An institution holds client assets in Dfns Vaults and runs the controls its risk and compliance teams expect: every deposit is quarantined until screening clears it, every withdrawal needs two of three approvers, the institution's own **Validation Gate** gets a last veto before any key signs, and every balance movement can be exported for audit.
 
@@ -82,7 +82,7 @@ Every balance change is an entry in the vault's append-only ledger. The app read
 ## Open questions
 
 1. Is there an environment (a SaaS org configured by Dfns, or an on-prem/dev one) where the gate can be enabled for real? Not blocking: the recipe uses the simulator; a real run would only be recorded for sales demos.
-2. Which screening provider works on testnet vault deposits, and how is it wired to the release-quarantine policy?
+2. Which screening provider works on testnet vault deposits, and how is it wired to the release-quarantine policy? Per the docs, only Chainalysis is wired to quarantine release (`ChainalysisQuarantineScreening`), and it screens mainnets only, so the setup script falls back to one manual approval on Sepolia.
 3. The gate only receives `txHash`, not the decoded transaction. Should the handler look up the pending transfer (by hash) through the Dfns API to apply business rules?
 4. Approvals: three users with passkeys, or service accounts for the demo?
 5. Network: EVM testnet (Sepolia or Hoodi) to start; Bitcoin and Solana later?

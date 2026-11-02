@@ -1,0 +1,19 @@
+{
+  "name": "institutional-custody",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "setup": "npx tsx scripts/setup.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@dfns/sdk": "0.8.31",
+    "@dfns/sdk-keysigner": "0.8.31",
+    "dotenv": "17.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.4",
+    "tsx": "4.23.15",
+    "typescript": "5.8.3"
+  }
+}
