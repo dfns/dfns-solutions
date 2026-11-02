@@ -3,6 +3,7 @@
 //
 //   vault              → tagged custody vault + Sepolia address
 //   withdrawal policy  → vault transfers need 1 of 2 approvers
+//   checker            → added to the withdrawal approvers, votes by rule
 //   quarantine policy  → deposits need a manual review before release
 import fs from 'fs'
 import path from 'path'
@@ -101,6 +102,64 @@ async function ensureWithdrawalPolicy(walletId: string) {
     })
 }
 
+// Adds the checker service account to the withdrawal policy's approval group,
+// keeping everything else on the policy as it is. Update Policy replaces the
+// whole policy, so the current one is read first and sent back with the
+// checker added. Service accounts only vote when the group allows it
+// (serviceAccountsCanApprove), which Dfns has to activate on the org.
+async function ensureCheckerApprover(policyId: string | undefined) {
+    const checkerId = env('CHECKER_USER_ID')
+    if (!checkerId) {
+        console.log('  ! Checker not added: set CHECKER_USER_ID and re-run.')
+        return false
+    }
+    if (!policyId) return false
+    const policy = await api.policies.getPolicy({ policyId })
+    if (policy.activityKind !== 'Wallets:Sign' || policy.action.kind !== 'RequestApproval') {
+        throw new Error(`Policy ${policyId} is not a Wallets:Sign approval policy`)
+    }
+    const [group, ...others] = policy.action.approvalGroups
+    const users = 'userId' in group.approvers ? group.approvers.userId?.in ?? [] : []
+    if (users.includes(checkerId) && group.serviceAccountsCanApprove) {
+        console.log(`  ✓ Checker ${checkerId} in "${group.name ?? 'approvers'}"`)
+        return true
+    }
+    if (!('userId' in group.approvers)) {
+        // An empty approvers object means anyone in the org: nothing to add to
+        throw new Error(`Policy ${policyId} lets anyone approve; name the approvers first`)
+    }
+    await api.policies.updatePolicy({
+        policyId,
+        body: {
+            name: policy.name,
+            activityKind: policy.activityKind,
+            rule: policy.rule,
+            action: {
+                ...policy.action,
+                approvalGroups: [{
+                    ...group,
+                    approvers: { ...group.approvers, userId: { in: [...new Set([...users, checkerId])] } },
+                    serviceAccountsCanApprove: true,
+                }, ...others],
+            },
+            filters: policy.filters,
+        },
+    })
+    // A Policies:Modify policy on the org holds the update for approval
+    // instead of applying it, so read it back rather than trust the call
+    const updated = await api.policies.getPolicy({ policyId })
+    const applied = updated.activityKind === 'Wallets:Sign' && updated.action.kind === 'RequestApproval'
+        && 'userId' in updated.action.approvalGroups[0].approvers
+        && updated.action.approvalGroups[0].approvers.userId?.in.includes(checkerId)
+    if (!applied) {
+        console.log(`  ! Checker update sent but not applied yet: it may be pending approval`)
+        console.log(`    under a Policies:Modify policy. Approve it, then re-run.`)
+        return false
+    }
+    console.log(`  + Checker ${checkerId} added to "${group.name ?? 'approvers'}"`)
+    return true
+}
+
 // Chainalysis is the only provider wired to quarantine release
 // (ChainalysisQuarantineScreening), and it screens mainnets only. On Sepolia
 // the policy falls back to one manual approval by any org user. Service
@@ -128,6 +187,7 @@ async function main() {
     const vault = await ensureVault()
     console.log('\nPolicies')
     const withdrawal = await ensureWithdrawalPolicy(vault.walletId)
+    const checker = await ensureCheckerApprover(withdrawal)
     const quarantine = await ensureQuarantinePolicy()
 
     console.log(`
@@ -138,6 +198,7 @@ IDs saved to .env.
     → Sepolia ETH from a faucet
   Withdrawals        ${withdrawal ?? 'no policy yet: set APPROVER_USER_IDS and re-run'}
     → ${QUORUM} of ${APPROVERS} approvers on every transfer from the vault
+    → checker ${checker ? 'is an approver: run npm run checker' : 'not set up yet (see above)'}
   Deposits           ${quarantine}
     → one manual approval before quarantined funds become Available.
       Screening isn't available on testnet: Chainalysis, the provider for

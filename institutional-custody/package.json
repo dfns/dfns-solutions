@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "setup": "npx tsx scripts/setup.ts",
+    "checker": "npx tsx scripts/checker.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
