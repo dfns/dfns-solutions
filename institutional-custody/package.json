@@ -5,6 +5,9 @@
   "scripts": {
     "setup": "npx tsx scripts/setup.ts",
     "checker": "npx tsx scripts/checker.ts",
+    "gate": "node --import tsx gate/server.ts",
+    "simulate": "npx tsx scripts/simulate-signer.ts",
+    "test": "node --import tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

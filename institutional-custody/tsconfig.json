@@ -9,5 +9,5 @@
     "moduleResolution": "bundler",
     "noEmit": true
   },
-  "include": ["./src/**/*.ts", "./scripts/**/*.ts"]
+  "include": ["./src/**/*.ts", "./scripts/**/*.ts", "./gate/**/*.ts", "./test/**/*.ts"]
 }

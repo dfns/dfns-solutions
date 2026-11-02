@@ -1,6 +1,6 @@
 # Institutional Custody
 
-> **Status: in progress.** Steps 1 to 3 are in place: setup script, first deposit and the automatic checker. See [Run it](#run-it).
+> **Status: in progress.** Steps 1 to 3 and 5 are in place: setup script, first deposit, automatic checker, and the Validation Gate handler with its signer simulator. See [Run it](#run-it).
 
 An institution holds client assets in Dfns Vaults and runs the controls its risk and compliance teams expect: every deposit is quarantined until screening clears it, every withdrawal needs another person's approval (1 of 2 in the demo, typically 2 of 3 in production), the institution's own **Validation Gate** gets a last veto before any key signs, and every balance movement can be exported for audit.
 
@@ -66,7 +66,7 @@ Every balance change is an entry in the vault's append-only ledger. The app read
 | Manual review | Get Vault Quarantine, Release Quarantine |
 | Withdrawal | Create Vault Transfer (reserves amount and fee from Available) |
 | Withdrawal approval (1 of 2 in the demo) | Signing policy with an approval quorum; approvers decide with passkeys |
-| Last veto | Validation Gate: the signer POSTs `signerInfo` (`kind`, `keyId`, `publicKey`, `txHash`) to the institution's endpoint, HMAC-signed; any non-200 rejects |
+| Last veto | Validation Gate: the signer POSTs `signerInfo` (`kind`, `keyId`, `publicKey`, `txHash`) plus the intent (`path`, `payload { kind, to, amount }`) and source and destination addresses to the institution's endpoint, HMAC-signed; any non-200 rejects |
 | Audit | List Vault History, `Vault event created` webhook |
 
 ## What runs where in the demo
@@ -83,7 +83,7 @@ Every balance change is an entry in the vault's append-only ledger. The app read
 
 1. Is there an environment (a SaaS org configured by Dfns, or an on-prem/dev one) where the gate can be enabled for real? Not blocking: the recipe uses the simulator; a real run would only be recorded for sales demos.
 2. Which screening provider works on testnet vault deposits, and how is it wired to the release-quarantine policy? Per the docs, only Chainalysis is wired to quarantine release (`ChainalysisQuarantineScreening`), and it screens mainnets only, so the setup script falls back to one manual approval on Sepolia.
-3. The gate only receives `txHash`, not the decoded transaction. Should the handler look up the pending transfer (by hash) through the Dfns API to apply business rules?
+3. ~~The gate only receives `txHash`, not the decoded transaction.~~ Answered: per `validation-gate-core`, the signer also sends the intent (`path` and `payload { kind, to, amount }`), the initiator (`userId`, `username`) and the source and destination addresses, so the handler applies its rules without calling the Dfns API. Requests without an intent (raw signatures) are rejected by default.
 4. Approvals: which two org users act as approvers? Each needs `Policies:Evaluations:Vote`; nobody can approve their own request, and service accounts can't approve, so it takes real people.
 5. Network: EVM testnet (Sepolia or Hoodi) to start; Bitcoin and Solana later?
 
@@ -93,7 +93,7 @@ Every balance change is an entry in the vault's append-only ledger. The app read
 2. First deposit: send Sepolia ETH from an ordinary Dfns wallet to the vault address. It lands as Quarantined and exercises the release policy end to end. *Done: released after a second person's approval; a test withdrawal triggered the withdrawal policy.*
 3. Automatic checker: a dedicated service account (role limited to `Policies:Evaluations:Read` and `Vote`) is one of the withdrawal approvers and votes by rule (amount cap, destination allowlist), like [Programmable Policy](../programmable-policy/). People stay in the approval group as the fallback above the cap. The checker must differ from the service account that requests withdrawals. *Done: `npm run checker`. It approves or leaves for a human, never rejects.*
 4. Backend (TypeScript, like [Collateral](../collateral/)): deposits and quarantines, withdrawals, approvals, audit export. Track each operation's status from webhooks rather than polling: `Pending` (awaiting approvals) → `Executing` → `Broadcasted` → `Confirmed`, plus `Failed` / `Rejected`, and quarantine and release for deposits.
-5. Validation Gate handler with HMAC verification and simple rules (amount cap, allowlist, business hours), plus a signer simulator. Take the request format, headers and responses from Dfns's own gate code (`validation-gate-core` and `validation-gate-test-utils` in `dfnsco/coresign`), so the handler plugs into a real signer unchanged. If an environment allows it, record one real end-to-end run.
+5. Validation Gate handler with HMAC verification and simple rules (amount cap, allowlist, business hours), plus a signer simulator. Take the request format, headers and responses from Dfns's own gate code (`validation-gate-core` and `validation-gate-test-utils` in `dfnsco/coresign`), so the handler plugs into a real signer unchanged. If an environment allows it, record one real end-to-end run. *Done: `npm run gate` and `npm run simulate`. A real signer run is still open (question 1).*
 6. Web UI: Operations, Approvers and Audit views, with a live status timeline per operation (from the webhooks above) and the raw Dfns calls behind it.
 7. Tutorial page on docs.dfns.co.
 
@@ -109,6 +109,28 @@ npm run checker         # leave running: votes on pending withdrawals
 The checker votes **approve** when a withdrawal is native ETH, its destination is in `CHECKER_ALLOWLIST` and its amount is at most `CHECKER_MAX_AMOUNT_WEI`. Otherwise it does nothing and logs why, so a person decides. It runs with its own service account (`CHECKER_*`), whose role only reads and votes on approvals.
 
 For a service account to vote, the approval group needs `serviceAccountsCanApprove: true`, which Dfns activates per organization. `npm run setup` sets it when it adds the checker; if the vote is refused, the checker logs it and leaves the withdrawal for a human.
+
+### Validation Gate
+
+```bash
+openssl rand -hex 32    # put it in .env as GATE_SHARED_SECRET
+npm run gate            # the handler, on http://localhost:4000/validate
+npm run simulate        # in another terminal: six signer requests
+npm test                # HMAC and rules
+```
+
+The handler checks the `x-payload-signature` header (base64 HMAC-SHA256 of the raw body with the shared secret) before reading anything, then applies the rules: signing only (no key export), native ETH, amount at most `GATE_MAX_AMOUNT_WEI`, destination in `GATE_ALLOWLIST`, optionally within `GATE_HOURS`. Requests without an intent are rejected. It logs one line per decision and answers:
+
+| Status | Meaning | What the signer does |
+|---|---|---|
+| `200` | Approved | Signs |
+| `401` | Missing or bad signature | Refuses (`Unauthenticated`) |
+| `400` | Malformed request | Refuses (`Unauthenticated`) |
+| `403` | A rule rejected it; the JSON body says which | Refuses (`PermissionDenied`) |
+
+The simulator sends an allowed transfer, one over the cap, one to an address off the allowlist, one with a bad signature, a key export and a request without an intent, and checks each answer. With GATE_HOURS set and the current time outside them, it expects the allowed transfer to be rejected too.
+
+The request format, headers and status handling come from Dfns's signer code (`validation-gate-core` in `dfnsco/coresign`), not the public docs, which are out of date. Behind a real signer, set `--validation-gate-url` to the handler's URL and give both sides the same secret.
 
 ## Possible extensions
 
