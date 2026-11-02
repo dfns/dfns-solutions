@@ -75,12 +75,13 @@ Every balance change is an entry in the vault's append-only ledger. The app read
 |---|---|---|
 | Vaults, policies, approvals | Dfns API (testnet) | Same |
 | Screening | KYT provider on testnet, or a stub that scores known addresses | KYT provider |
-| Validation Gate handler | Included here: an HTTP service that verifies the HMAC and applies rules | Hosted by the institution |
+| Validation Gate handler | Included here: an HTTP service that verifies the HMAC and applies rules. Same request format and headers as a real signer, so it works unchanged behind one | Hosted by the institution |
+| Signer call to the gate | A simulator script sends the signer's request (`signerInfo`, HMAC-signed) so the recipe runs with a plain SaaS org | The signer itself |
 | Validation Gate enforcement | Documented for self-hosted signers, configured with `--validation-gate-url` on the signer. Whether a hosted SaaS org can use it isn't documented: to confirm. | The institution's signer |
 
 ## Open questions
 
-1. Can a test org be pointed at a self-hosted signer with the Validation Gate enabled, or do we record a demo against an on-prem environment?
+1. Is there an environment (a SaaS org configured by Dfns, or an on-prem/dev one) where the gate can be enabled for real? Not blocking: the recipe uses the simulator; a real run would only be recorded for sales demos.
 2. Which screening provider works on testnet vault deposits, and how is it wired to the release-quarantine policy?
 3. The gate only receives `txHash`, not the decoded transaction. Should the handler look up the pending transfer (by hash) through the Dfns API to apply business rules?
 4. Approvals: three users with passkeys, or service accounts for the demo?
@@ -90,6 +91,6 @@ Every balance change is an entry in the vault's append-only ledger. The app read
 
 1. Setup script: vault, address, tags, policies (release-quarantine with screening, 2-of-3 withdrawal approval).
 2. Backend (TypeScript, like [Collateral](../collateral/)): deposits and quarantines, withdrawals, approvals, audit export.
-3. Validation Gate handler with HMAC verification and simple rules (amount cap, allowlist, business hours).
+3. Validation Gate handler with HMAC verification and simple rules (amount cap, allowlist, business hours), plus a signer simulator. Built standalone first, so it plugs into a real signer unchanged; if an environment allows it, record one real end-to-end run.
 4. Web UI: Operations, Approvers and Audit views, with a live timeline of every Dfns call.
 5. Tutorial page on docs.dfns.co.
