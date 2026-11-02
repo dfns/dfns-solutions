@@ -1,6 +1,6 @@
 # Institutional Custody
 
-> **Status: in progress.** Steps 1 to 3 and 5 are in place: setup script, first deposit, automatic checker, and the Validation Gate handler with its signer simulator. See [Run it](#run-it).
+> **Status: in progress.** Steps 1 to 5 are in place: setup script, first deposit, automatic checker, backend, and the Validation Gate handler with its signer simulator. See [Run it](#run-it).
 
 An institution holds client assets in Dfns Vaults and runs the controls its risk and compliance teams expect: every deposit is quarantined until screening clears it, every withdrawal needs another person's approval (1 of 2 in the demo, typically 2 of 3 in production), the institution's own **Validation Gate** gets a last veto before any key signs, and every balance movement can be exported for audit.
 
@@ -92,7 +92,7 @@ Every balance change is an entry in the vault's append-only ledger. The app read
 1. Setup script: vault, address, tags, policies (release-quarantine with manual review on testnet, 1-of-2 withdrawal approval). *Done.*
 2. First deposit: send Sepolia ETH from an ordinary Dfns wallet to the vault address. It lands as Quarantined and exercises the release policy end to end. *Done: released after a second person's approval; a test withdrawal triggered the withdrawal policy.*
 3. Automatic checker: a dedicated service account (role limited to `Policies:Evaluations:Read` and `Vote`) is one of the withdrawal approvers and votes by rule (amount cap, destination allowlist), like [Programmable Policy](../programmable-policy/). People stay in the approval group as the fallback above the cap. The checker must differ from the service account that requests withdrawals. *Done: `npm run checker`. It approves or leaves for a human, never rejects.*
-4. Backend (TypeScript, like [Collateral](../collateral/)): deposits and quarantines, withdrawals, approvals, audit export. Track each operation's status from webhooks rather than polling: `Pending` (awaiting approvals) → `Executing` → `Broadcasted` → `Confirmed`, plus `Failed` / `Rejected`, and quarantine and release for deposits.
+4. Backend (TypeScript, like [Collateral](../collateral/)): deposits and quarantines, withdrawals, approvals, audit export. It follows each operation's status: `Pending` (awaiting approvals) → `Executing` → `Broadcasted` → `Confirmed`, plus `Failed` / `Rejected`, and quarantined → release requested → released for deposits. *Done: `npm start`. It polls the Dfns API every 10 s rather than taking webhooks, since the demo machine isn't reachable from the internet. All polling sits in `src/poller.ts`, so webhooks (`vault.event.created`, `wallet.transfer.*`, `policy.approval.*`) can replace it later.*
 5. Validation Gate handler with HMAC verification and simple rules (amount cap, allowlist, business hours), plus a signer simulator. Take the request format, headers and responses from Dfns's own gate code (`validation-gate-core` and `validation-gate-test-utils` in `dfnsco/coresign`), so the handler plugs into a real signer unchanged. If an environment allows it, record one real end-to-end run. *Done: `npm run gate` and `npm run simulate`. A real signer run is still open (question 1).*
 6. Web UI: Operations, Approvers and Audit views, with a live status timeline per operation (from the webhooks above) and the raw Dfns calls behind it.
 7. Tutorial page on docs.dfns.co.
@@ -109,6 +109,35 @@ npm run checker         # leave running: votes on pending withdrawals
 The checker votes **approve** when a withdrawal is native ETH, its destination is in `CHECKER_ALLOWLIST` and its amount is at most `CHECKER_MAX_AMOUNT_WEI`. Otherwise it does nothing and logs why, so a person decides. It runs with its own service account (`CHECKER_*`), whose role only reads and votes on approvals.
 
 For a service account to vote, the approval group needs `serviceAccountsCanApprove: true`, which Dfns activates per organization. `npm run setup` sets it when it adds the checker; if the vote is refused, the checker logs it and leaves the withdrawal for a human.
+
+### Backend
+
+```bash
+npm start               # http://localhost:3000, polls Dfns every 10 s
+```
+
+The terminal prints one line per status change as it polls: a deposit landing as quarantined, a release requested and released, a withdrawal going from pending approval to broadcast and confirmed, approvals requested and decided. The backend uses the backend service account (`DFNS_*`); to see pending approvals it needs `Policies:Evaluations:Read`. If one source fails (a missing permission, say), the others still update and `/api/state` says which failed under `errors`.
+
+```bash
+# Vault balances by asset and kind, pending quarantines, recent withdrawals, pending approvals
+curl -s localhost:3000/api/state
+
+# The status changes seen since startup
+curl -s localhost:3000/api/timeline
+
+# Withdraw 0.001 ETH: answers at once with status Pending and an approval id
+curl -s -X POST localhost:3000/api/withdrawals -H 'Content-Type: application/json' \
+  -d '{"amountEth": "0.001", "to": "0xYourAddress"}'
+
+# Release a quarantined deposit (id from /api/state); a person then approves it
+curl -s -X POST localhost:3000/api/quarantines/vlt-qua-.../release -H 'Content-Type: application/json' \
+  -d '{"reason": "Sender known, deposit expected"}'
+
+# The vault's full history as CSV: date, kind, amount, asset, counterparty, tx hash, status, requester
+curl -s -OJ localhost:3000/api/audit.csv
+```
+
+SDK 0.8.31 doesn't wrap List Vault History yet, so `src/dfns.ts` calls `GET /vaults/{vaultId}/history` through the SDK's own transport; from SDK 0.8.33 it's `vaults.listVaultHistory`.
 
 ### Validation Gate
 
