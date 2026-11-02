@@ -19,6 +19,20 @@ function eth(wei) {
     return `${s.slice(0, -18)}${frac ? '.' + frac : ''} ETH`
 }
 
+// For tight spaces: at most `places` decimals, cut rather than rounded so a
+// balance never reads higher than it is, and marked ≈ when cut. Use with the
+// exact eth() value in a tooltip.
+function ethShort(wei, places = 6) {
+    if (wei === undefined || wei === null) return '–'
+    const s = BigInt(wei).toString().padStart(19, '0')
+    const full = s.slice(-18).replace(/0+$/, '')
+    const frac = full.slice(0, places).replace(/0+$/, '')
+    const whole = s.slice(0, -18)
+    // Dust would otherwise read "≈ 0", as if the balance were empty
+    if (whole === '0' && !frac && full) return `< 0.${'0'.repeat(places - 1)}1 ETH`
+    return `${full.length > places ? '≈ ' : ''}${whole}${frac ? '.' + frac : ''} ETH`
+}
+
 // Reasons written in wei (older checker and gate decisions) read as ETH. The
 // raw data keeps them as recorded.
 const humanize = text => esc(text).replace(/\b(\d{6,}) wei\b/g, (_, wei) => eth(wei))
@@ -245,7 +259,7 @@ function renderBalances() {
     const ethBalances = s.balances['native:eth'] ?? {}
     $('p-balances').innerHTML = `<div class="big">${KINDS.map(([k, lbl]) => {
         const v = ethBalances[k] ?? '0'
-        return `<div class="card${v === '0' ? ' zero' : ''}"><div class="lbl">${esc(k)}</div><div class="amt">${eth(v)}</div><div class="hint">${esc(lbl)}</div></div>`
+        return `<div class="card${v === '0' ? ' zero' : ''}"><div class="lbl">${esc(k)}</div><div class="amt" title="${esc(eth(v))}">${ethShort(v)}</div><div class="hint">${esc(lbl)}</div></div>`
     }).join('')}</div>
     <p class="hint">Updated ${esc(time(s.updatedAt))}. Other assets: ${Object.keys(s.balances).filter(t => t !== 'native:eth').map(esc).join(', ') || 'none'}.</p>`
     raw('r-balances', { 'balances (List Vault Balances, summed by asset and kind)': s.balances })
