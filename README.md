@@ -66,6 +66,14 @@ Full-stack web application where crypto wallets sit alongside traditional fiat a
 
 [Get started &rarr;](./bank-custody/)
 
+### Institutional Custody
+
+An institution holds client assets in Dfns Vaults under the controls its risk team expects. Deposits stay quarantined until a second person releases them. Every withdrawal needs an approval: an automatic checker clears small transfers to known addresses and leaves the rest to a person. The institution's own Validation Gate gets a last veto before any key signs, and the vault's ledger exports as CSV for audit. A live walkthrough page shows each stage on real testnet data.
+
+**Business use case:** Custodians, banks and asset managers that need segregated client balances, maker-checker withdrawals and an independent signing veto, with a ledger auditors can read.
+
+[Get started &rarr;](./institutional-custody/)
+
 ### Programmable Policy
 
 A Dfns Service Account decodes the ABI-encoded call data on pending wallet transactions and approves or denies them based on the function being called, the recipient and the amount. Static policies stop at amounts and addresses; this one reasons about what the transaction actually does.

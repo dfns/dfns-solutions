@@ -1,0 +1,30 @@
+{
+  "name": "institutional-custody",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "setup": "npx tsx scripts/setup.ts",
+    "start": "node --import tsx src/server.ts",
+    "checker": "npx tsx scripts/checker.ts",
+    "gate": "node --import tsx gate/server.ts",
+    "simulate": "npx tsx scripts/simulate-signer.ts",
+    "test": "node --import tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@dfns/sdk": "0.8.31",
+    "@dfns/sdk-keysigner": "0.8.31",
+    "dotenv": "17.4.2",
+    "express": "5.2.1"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.6",
+    "@types/node": "22.20.4",
+    "tsx": "4.23.15",
+    "typescript": "5.8.3"
+  },
+  "overrides": {
+    "encodeurl": "2.0.0",
+    "on-finished": "2.4.1"
+  }
+}
